@@ -143,6 +143,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="fastlib\fast.cpp" />
+    <ClCompile Include="fastlib\fast_10.cpp" />
+    <ClCompile Include="fastlib\fast_11.cpp" />
+    <ClCompile Include="fastlib\fast_12.cpp" />
+    <ClCompile Include="fastlib\fast_9.cpp" />
+    <ClCompile Include="fastlib\nonmax.cpp" />
+    <ClCompile Include="orb_blend_main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="fastlib\fast.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -13,5 +13,36 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="fast">
+      <UniqueIdentifier>{cf8ab753-a24d-4898-9134-d29741e06cc9}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="orb_blend_main.cpp">
+      <Filter>來源檔案</Filter>
+    </ClCompile>
+    <ClCompile Include="fastlib\nonmax.cpp">
+      <Filter>fast</Filter>
+    </ClCompile>
+    <ClCompile Include="fastlib\fast_12.cpp">
+      <Filter>fast</Filter>
+    </ClCompile>
+    <ClCompile Include="fastlib\fast_11.cpp">
+      <Filter>fast</Filter>
+    </ClCompile>
+    <ClCompile Include="fastlib\fast_10.cpp">
+      <Filter>fast</Filter>
+    </ClCompile>
+    <ClCompile Include="fastlib\fast_9.cpp">
+      <Filter>fast</Filter>
+    </ClCompile>
+    <ClCompile Include="fastlib\fast.cpp">
+      <Filter>fast</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="fastlib\fast.h">
+      <Filter>fast</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
