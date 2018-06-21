@@ -194,6 +194,19 @@ void keyPt_grayCentroidAngle(vector<LATCH::KeyPoint>& key, const basic_ImgData& 
 		key[idx++].angle = fastAtan2f_rad(m01, m10);
 	}
 }
+int desc_distance(const vector<uint64_t>& desc1, const vector<uint64_t>& desc2, int idx) {
+	int dist=0;
+	int idx2 = idx+1;
+	dist += (bitset<64>(desc1[idx*8 +0]) ^ bitset<64>(desc2[idx2*8 +0])).count();
+	dist += (bitset<64>(desc1[idx*8 +1]) ^ bitset<64>(desc2[idx2*8 +1])).count();
+	dist += (bitset<64>(desc1[idx*8 +2]) ^ bitset<64>(desc2[idx2*8 +2])).count();
+	dist += (bitset<64>(desc1[idx*8 +3]) ^ bitset<64>(desc2[idx2*8 +3])).count();
+	dist += (bitset<64>(desc1[idx*8 +4]) ^ bitset<64>(desc2[idx2*8 +4])).count();
+	dist += (bitset<64>(desc1[idx*8 +5]) ^ bitset<64>(desc2[idx2*8 +5])).count();
+	dist += (bitset<64>(desc1[idx*8 +6]) ^ bitset<64>(desc2[idx2*8 +6])).count();
+	dist += (bitset<64>(desc1[idx*8 +7]) ^ bitset<64>(desc2[idx2*8 +7])).count();
+	return dist;
+}
 //====================================================================================
 int main(int argc, char const *argv[]) {
 	cvInitializeOpenCL();
@@ -237,14 +250,7 @@ int main(int argc, char const *argv[]) {
 	vector<LATCH::KeyPoint>& key2 = key;
 	t1.start();
 	for (int keyIdx = 0; keyIdx < 2; keyIdx++) {
-		int dist=0;
-		for (int i = 0; i < 8; ++i) {
-			//cout << bitset<64>(desc[keyIdx+i]);
-
-			dist += (bitset<64>(desc[(keyIdx)*8+i])^bitset<64>(desc2[(keyIdx+1)*8+i])).count();
-
-		} //cout << endl;
-
+		int dist = desc_distance(desc, desc2, keyIdx);
 		cout << "dist=" << dist << endl;
 	}
 	t1.print(" distence");
