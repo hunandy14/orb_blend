@@ -16,6 +16,9 @@
     <Filter Include="fast">
       <UniqueIdentifier>{cf8ab753-a24d-4898-9134-d29741e06cc9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="LATCH">
+      <UniqueIdentifier>{904c620e-cc92-42da-86e2-fef311338d5c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="orb_blend_main.cpp">
@@ -43,6 +46,9 @@
   <ItemGroup>
     <ClInclude Include="fastlib\fast.h">
       <Filter>fast</Filter>
+    </ClInclude>
+    <ClInclude Include="LATCH\LATCH.h">
+      <Filter>LATCH</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
