@@ -172,8 +172,8 @@ inline void OpenBMP::bmpRead(std::vector<uch>& dst, std::string name,
 	}
 	// 讀 Raw
 	bmp.seekg(file_h.bfOffBits, std::ios::beg);
-	dst.resize(info_h.biWidth * info_h.biHeight * (info_h.biBitCount/8));
-	size_t realW = info_h.biWidth * info_h.biBitCount/8.0;
+	dst.resize(info_h.biWidth * info_h.biHeight * (info_h.biBitCount>>3));
+	size_t realW = info_h.biWidth * info_h.biBitCount>>3;
 	size_t alig = (realW*3) % 4;
 	char* p = reinterpret_cast<char*>(dst.data());
 	for(int j = info_h.biHeight-1; j >= 0; --j) {
@@ -211,7 +211,7 @@ inline void OpenBMP::bmpWrite( std::string name, const std::vector<uch>& src,
 		}
 	}
 	// 寫入圖片資訊
-	size_t realW = info_h.biWidth * info_h.biBitCount/8.0;
+	size_t realW = info_h.biWidth * info_h.biBitCount>>3;
 	size_t alig = (realW*3) % 4;
 
 
@@ -312,20 +312,22 @@ public: // 存取方法
 	inline const uch* at2d(size_t y, size_t x) const {
 		return &raw_img[(y*width + x) *(bits>>3)];
 	}
-	// 線性插值(快速測試用, RGB效率很差)
+	// 線性插值讀取(快速測試用, RGB效率很差)
 	std::vector<double> at2d_linear(double y, double x) const { 
 		std::vector<double> RGB(bits>>3);
-		// 整數就不算了
-		if (y==(int)y && x==(int)x) {
-			auto p = this->at2d(y, x);
-			for (int i = 0; i < RGB.size(); i++)
-				RGB[i] = static_cast<double>(p[i]);
-			return RGB;
-		}
 		// 獲取鄰點
 		int x0 = (int)(x);
-		int x1 = (x)==(int)(x)? (int)(x): (int)(x+1.0);
 		int y0 = (int)(y);
+		// 整數就不算了
+		if (y==y0 && x==x0) {
+			const uch* p = at2d(y0, x0);
+			for (int i = 0; i < RGB.size(); i++)
+				RGB[i] = (double)(p[i]);
+			return RGB;
+		}
+
+		// 獲取鄰點
+		int x1 = (x)==(int)(x)? (int)(x): (int)(x+1.0);
 		int y1 = (y)==(int)(y)? (int)(y): (int)(y+1.0);
 		// 獲取比例
 		double dx1 = x -  x0;
@@ -410,8 +412,8 @@ public: // 自訂方法
 			throw std::out_of_range("toSnip() out of range");
 		// 開始擷取
 		ImgData img(width, height, this->bits);
-		for (int j = 0; j < img.height; j++) {
-			for (int i = 0; i < img.width; i++) {
+		for (uint32_t j = 0; j < img.height; j++) {
+			for (uint32_t i = 0; i < img.width; i++) {
 				auto srcIt = this->at2d(j+y, i+x);
 				auto dstIt = img.at2d(j, i);
 				for (size_t rgb = 0; rgb < bits>>3; rgb++) {
@@ -444,14 +446,14 @@ public:
 		nor_img.resize(raw_img.size());
 		#pragma omp parallel for
 		for (int i = 0; i < nor_img.size(); i++) {
-			nor_img[i] = raw_img[i] /255.0;
+			nor_img[i] = raw_img[i] /255.f;
 		}
 	}
 	void reNormalization() {
 		raw_img.resize(nor_img.size());
 		#pragma omp parallel for
 		for (int i = 0; i < nor_img.size(); i++) {
-			raw_img[i] = nor_img[i] *255.0;
+			raw_img[i] = (uchar)(nor_img[i] *255.f);
 		}
 	}
 public:
