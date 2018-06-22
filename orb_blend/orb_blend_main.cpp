@@ -129,8 +129,8 @@ void keyPt_HarrisCroner(vector<LATCH::KeyPoint>& key,
 	vector<cv::Point2f> corners;
 	UMat ucvImg = cvImg.getUMat(cv::ACCESS_RW);
 	//goodFeaturesToTrack(cvImg, corners, 2000, 0.01, 3, herrisMask, 3, true);
-	goodFeaturesToTrack(ucvImg, corners, 2000, 0.01, 3, herrisMask, 3, true);
-	//goodFeaturesToTrack(ucvImg, corners, 445, 0.01, 3, noArray(), 3, true);
+	//goodFeaturesToTrack(ucvImg, corners, 500, 0.01, 1, herrisMask, 3, true);
+	goodFeaturesToTrack(ucvImg, corners, 445, 0.01, 30, noArray(), 3, true);
 
 	// 輸出到 keyPt
 	key.clear();
@@ -157,13 +157,16 @@ void keyPt_drawPoint(ImgData out, const vector<LATCH::KeyPoint>& corner) {
 	for (size_t i = 0; i < corner.size(); i++) {
 		const int x = (int)corner[i].x;
 		const int y = (int)corner[i].y;
-		drawRGB(out.at2d(y+0, x+0), 255, 0, 0);
-		drawRGB(out.at2d(y+1, x+0), 255, 0, 0);
-		drawRGB(out.at2d(y+0, x+1), 255, 0, 0);
-		drawRGB(out.at2d(y-1, x+0), 255, 0, 0);
-		drawRGB(out.at2d(y+0, x-1), 255, 0, 0);
+
+		int r=2;
+		for (int rj = -r; rj<=r ; rj++) {
+			for (int ri = -r; ri<=r; ri++) {
+				drawRGB(out.at2d(y+rj, x+ri), 255, 0, 0);
+			}
+		}
 	}
-	out.bmp("_drawKeyPt.bmp");
+	static int num = 0;
+	out.bmp("_drawKeyPt"+to_string(num++)+".bmp");
 }
 
 void keyPt_grayCentroidAngle(vector<LATCH::KeyPoint>& key, const basic_ImgData& grayImg) {
@@ -178,54 +181,48 @@ void keyPt_grayCentroidAngle(vector<LATCH::KeyPoint>& key, const basic_ImgData& 
 				int y = key[idx].y +j;
 				int idx = y*grayImg.width +x;
 
-				//m00 +=     grayImg.raw_img[idx];
-				m10 += i * grayImg.raw_img[idx];
-				m01 += j * grayImg.raw_img[idx];
+				
 
 				// debug
 				if((x < 0.0 or x >= grayImg.width) or
 					(y < 0.0 or y >= grayImg.height)) {
-					cout << "thisx=" << x << endl;
-					cout << "thisy=" << y << endl;
+					/*cout << "thisx=" << x << endl;
+					cout << "thisy=" << y << endl;*/
+					continue;
 					throw out_of_range("出現負號");
 				}
+
+				//m00 +=     grayImg.raw_img[idx];
+				m10 += i * grayImg.raw_img[idx];
+				m01 += j * grayImg.raw_img[idx];
 			}
 		}
 		key[idx++].angle = fastAtan2f_rad(m01, m10);
 	}
 }
-int desc_distance(const vector<uint64_t>& desc1, const vector<uint64_t>& desc2, int idx) {
+int desc_distance(const vector<uint64_t>& desc1, const vector<uint64_t>& desc2, int idx1, int idx2) {
 	int dist=0;
-	int idx2 = idx+1;
-	dist += (bitset<64>(desc1[idx*8 +0]) ^ bitset<64>(desc2[idx2*8 +0])).count();
-	dist += (bitset<64>(desc1[idx*8 +1]) ^ bitset<64>(desc2[idx2*8 +1])).count();
-	dist += (bitset<64>(desc1[idx*8 +2]) ^ bitset<64>(desc2[idx2*8 +2])).count();
-	dist += (bitset<64>(desc1[idx*8 +3]) ^ bitset<64>(desc2[idx2*8 +3])).count();
-	dist += (bitset<64>(desc1[idx*8 +4]) ^ bitset<64>(desc2[idx2*8 +4])).count();
-	dist += (bitset<64>(desc1[idx*8 +5]) ^ bitset<64>(desc2[idx2*8 +5])).count();
-	dist += (bitset<64>(desc1[idx*8 +6]) ^ bitset<64>(desc2[idx2*8 +6])).count();
-	dist += (bitset<64>(desc1[idx*8 +7]) ^ bitset<64>(desc2[idx2*8 +7])).count();
+	dist += (bitset<64>(desc1[idx1*8 +0]) ^ bitset<64>(desc2[idx2*8 +0])).count();
+	dist += (bitset<64>(desc1[idx1*8 +1]) ^ bitset<64>(desc2[idx2*8 +1])).count();
+	dist += (bitset<64>(desc1[idx1*8 +2]) ^ bitset<64>(desc2[idx2*8 +2])).count();
+	dist += (bitset<64>(desc1[idx1*8 +3]) ^ bitset<64>(desc2[idx2*8 +3])).count();
+	dist += (bitset<64>(desc1[idx1*8 +4]) ^ bitset<64>(desc2[idx2*8 +4])).count();
+	dist += (bitset<64>(desc1[idx1*8 +5]) ^ bitset<64>(desc2[idx2*8 +5])).count();
+	dist += (bitset<64>(desc1[idx1*8 +6]) ^ bitset<64>(desc2[idx2*8 +6])).count();
+	dist += (bitset<64>(desc1[idx1*8 +7]) ^ bitset<64>(desc2[idx2*8 +7])).count();
 	return dist;
 }
-//====================================================================================
-int main(int argc, char const *argv[]) {
-	cvInitializeOpenCL();
 
+void ORB_dsec(const ImgData& img, vector<LATCH::KeyPoint>& key, vector<uint64_t>& desc) {
 	Timer t1;
-	const ImgData img("ball_01_blend.bmp");
-	//const ImgData img("kanna.bmp");
-	//const ImgData img("lena.bmp");
-
 	const ImgData grayImg = img.toConvertGray();
-	
 
 	// FAST
 	t1.start();
 	FAST9 corner(grayImg);
 	t1.print(" FAST12");
-	FATS_drawPoint(img, corner);
+	//FATS_drawPoint(img, corner);
 	// Harris
-	vector<LATCH::KeyPoint> key;
 	t1.start();
 	keyPt_HarrisCroner(key, grayImg, corner);
 	t1.print(" dstCorner");
@@ -237,22 +234,70 @@ int main(int argc, char const *argv[]) {
 	t1.print(" keyPt_grayCentroidAngle");
 
 	// desc
-	vector<uint64_t> desc(8 * key.size());
+	desc.resize(8 * key.size());
 	t1.start();
 	LATCH::LATCH<1>(grayImg.raw_img.data(), grayImg.width, grayImg.height, 
 		static_cast<int>(grayImg.width), key, desc.data());
 	t1.print(" LATCH");
+}
+//====================================================================================
+int main(int argc, char const *argv[]) {
+	cvInitializeOpenCL();
 
-	cout << "descNum=" << desc.size()/8 << endl;
+	Timer t1;
+	const ImgData img1("kanna.bmp");
+	const ImgData img2("kanna90.bmp");
+	//const ImgData img("kanna.bmp");
+	//const ImgData img("lena.bmp");
 
+
+	vector<LATCH::KeyPoint> key1, key2;
+	vector<uint64_t> desc1, desc2;
+	ORB_dsec(img1, key1, desc1);
+	ORB_dsec(img2, key2, desc2);
+
+	cout << "descNum=" << desc1.size()/8 << endl;
+	cout << "descNum=" << desc2.size()/8 << endl;
+	desc_distance(desc1, desc2, 0, 0);
 	// 查看描述值
-	vector<uint64_t>& desc2=desc;
-	vector<LATCH::KeyPoint>& key2 = key;
+
 	t1.start();
-	for (int keyIdx = 0; keyIdx < 2; keyIdx++) {
-		int dist = desc_distance(desc, desc2, keyIdx);
-		cout << "dist=" << dist << endl;
+	int linkNum=0;
+	for (int j = 0; j < key2.size(); j++) {
+		int distMin = INT_MAX;
+		int matchIdx = -1;
+		for (int i = 0; i < key1.size(); i++) {
+			int dist = desc_distance(desc2, desc1, j ,i);
+			if (dist > 384)
+				continue;
+			if (dist < distMin) {
+				distMin = dist;
+				matchIdx = i;
+			}
+		}
+		
+		if (distMin < 128) {
+			linkNum++;
+			cout << "distMin=" << distMin << endl;
+			cout << "desc1 = " << key1[matchIdx].x << ", " << key1[matchIdx].y;
+			cout << ", desc2 = " << key2[j].x << ", " << key2[j].y << endl;
+		}
 	}
+
+	int iii, iii2;
+	for (int j = 0; j < key2.size(); j++) {
+		if (key1[j].x==568) {
+			iii=j;
+			cout << "568 p"<< j <<"=" << key1[j].angle*180/3.14 << endl;
+		} 
+		if (key2[j].y == 281) {
+			iii2=j;
+			cout << "246 p"<< j <<"=" << (key2[j].angle*180/3.14)+360 << endl;
+
+		}
+	}
+
+	cout << "linkNum = " << linkNum << endl;
 	t1.print(" distence");
 
 	return 0;
