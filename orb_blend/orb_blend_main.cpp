@@ -13,19 +13,12 @@ using namespace std;
 #include "LATCH/LATCH.h"
 
 #define ORB_DSET_R 15
-//====================================================================================
-void cvInitializeOpenCL() {
-	using namespace cv;
-	vector<Point2f> corners;
-	Mat cvImg(1, 1, CV_8U);
-	UMat ugray = cvImg.getUMat(ACCESS_RW);
-	Mat herrisMask(Mat::zeros(Size(cvImg.cols, cvImg.rows),CV_8U));
-	goodFeaturesToTrack(ugray, corners, 2000, 0.01, 3, herrisMask);
-}
 
+void cvInitializeOpenCL();
+//====================================================================================
 struct basic_FAST {
-	xy* posi;
-	int num;
+	xy* posi = nullptr;
+	int num = 0;
 };
 class FAST9: public basic_FAST{
 public:
@@ -51,14 +44,10 @@ public:
 };
 
 void keyPt_HarrisCroner(vector<LATCH::KeyPoint>& key, 
-	const basic_ImgData& grayImg, const basic_FAST& corner)
+	const basic_ImgData& grayImg, const basic_FAST& corner = basic_FAST())
 {
 	using cv::Mat;
 	using cv::UMat;
-
-
-	Timer t1;
-	t1.priSta=0;
 
 	// 初始化mask --- >0ms
 	Mat cvImg(grayImg.height, grayImg.width, CV_8U, (void*)grayImg.raw_img.data());
@@ -80,9 +69,12 @@ void keyPt_HarrisCroner(vector<LATCH::KeyPoint>& key,
 	// Herris 角點
 	vector<cv::Point2f> corners;
 	UMat ucvImg = cvImg.getUMat(cv::ACCESS_RW);
-	//goodFeaturesToTrack(cvImg, corners, 2000, 0.01, 3, herrisMask, 3, true);
-	//goodFeaturesToTrack(ucvImg, corners, 445, 0.01, 3, herrisMask, 3, true);
-	goodFeaturesToTrack(ucvImg, corners, 445, 0.01, 30, cv::noArray(), 3, true);
+	if (corner.posi != nullptr) { // todo 拿掉會變成找不到機角度都朝45度，不知道怎樣
+		//goodFeaturesToTrack(ucvImg, corners, 445, 0.01, 30, cv::noArray(), 3, true);
+		goodFeaturesToTrack(ucvImg, corners, 445, 0.01, 3, herrisMask, 3, true);
+	} else {
+		goodFeaturesToTrack(ucvImg, corners, 445, 0.01, 30, cv::noArray(), 3, true);
+	}
 
 	// 輸出到 keyPt
 	key.clear();
@@ -194,7 +186,7 @@ int desc_distance(const vector<uint64_t>& desc1, const vector<uint64_t>& desc2, 
 
 void ORB_dsec(const ImgData& img, vector<LATCH::KeyPoint>& key, vector<uint64_t>& desc) {
 	Timer t1;
-	t1.priSta = 0;
+	t1.priSta = 1;
 	const ImgData grayImg = img.toConvertGray();
 
 	// FAST
@@ -205,7 +197,8 @@ void ORB_dsec(const ImgData& img, vector<LATCH::KeyPoint>& key, vector<uint64_t>
 
 	// Harris
 	t1.start();
-	keyPt_HarrisCroner(key, grayImg, corner);
+	//keyPt_HarrisCroner(key, grayImg, corner);
+	keyPt_HarrisCroner(key, grayImg);
 	t1.print(" Harris Corner");
 	cout << "Herris Corner num = " << key.size() << endl;
 	//keyPt_drawPoint(img, key); // 驗證::畫點
@@ -214,14 +207,13 @@ void ORB_dsec(const ImgData& img, vector<LATCH::KeyPoint>& key, vector<uint64_t>
 	t1.start();
 	keyPt_grayCentroidAngle(key, grayImg);
 	t1.print(" keyPt_grayCentroidAngle");
-	keyPt_drawAngle(img, key); // 驗證::畫箭頭
+	//keyPt_drawAngle(img, key); // 驗證::畫箭頭
 
 
 	// desc
 	desc.resize(8 * key.size());
 	t1.start();
-	LATCH::LATCH<1>(grayImg.raw_img.data(), grayImg.width, grayImg.height, 
-		static_cast<int>(grayImg.width), key, desc.data());
+	LATCH::LATCH<1>(grayImg.raw_img.data(), grayImg.width, grayImg.height, static_cast<int>(grayImg.width), key, desc.data());
 	t1.print(" LATCH");
 }
 
@@ -245,15 +237,14 @@ public:
 	float distance;
 
 	// less is better
-	bool operator < (const DMatch &m) const
-	{
+	bool operator < (const DMatch &m) const {
 		return distance < m.distance;
 	}
 };
 void keyPt_drawMatchLine(
 	const ImgData& img1, vector<LATCH::KeyPoint>& key1,  
 	const ImgData& img2, vector<LATCH::KeyPoint>& key2,
-	vector<DMatch>& dmatch)
+	vector<DMatch>& dmatch, string name="__matchImg.bmp")
 {
 	using uch = unsigned char;
 	// 合併圖像
@@ -277,29 +268,29 @@ void keyPt_drawMatchLine(
 		}
 	}
 	// 連線
-	int count = 0;
-	for (size_t i = 0; i < key1.size(); i++) {
-		count++;
+	int drawNum = 0;
+	for (size_t i = 0; i < dmatch.size(); i++) {
 		if (dmatch[i].distance != FLT_MAX) {
 			int x1 = key1[dmatch[i].queryIdx].x;
 			int y1 = key1[dmatch[i].queryIdx].y;
 			int x2 = key2[dmatch[i].trainIdx].x + img2.width;
 			int y2 = key2[dmatch[i].trainIdx].y;
 			Draw::drawLineRGB_p(matchImg, y1, x1, y2, x2);
+			drawNum++;
 		}
 	}
-	cout << "Match Num=" << count << endl;
-	matchImg.bmp("__matchImg.bmp");
+	cout << "draw Num = " << drawNum << "/" << dmatch.size() << endl;
+	matchImg.bmp(name);
 }
 
 void ORB_match(vector<LATCH::KeyPoint>& key1, vector<uint64_t>& desc1,
 	vector<LATCH::KeyPoint>& key2, vector<uint64_t>& desc2, vector<DMatch>& dmatch)
 {
-	dmatch.resize(key1.size());		// 
-	const float matchDistance = 64;			// 少於多少距離才選定
-	const float noMatchDistance = 256;		// 大於多少距離就不連
+	dmatch.resize(key1.size());				// 由key1去找key2
+	const float matchDistance = 256;			// 少於多少距離才選定
+	const float noMatchDistance = 384;		// 大於多少距離就不連
 
-	int linkNum = 0;
+	int matchNum = 0;
 	for (int j = 1; j < key1.size(); j++) {
 		float& distMin = dmatch[j].distance;
 		int& matchIdx = dmatch[j].trainIdx;
@@ -314,10 +305,7 @@ void ORB_match(vector<LATCH::KeyPoint>& key1, vector<uint64_t>& desc1,
 		}
 		// 紀錄最短距離與索引
 		if (distMin < matchDistance) {
-			linkNum++;
-			cout << "distMin=" << distMin << endl;
-			cout << "desc1 = " << key1[matchIdx].x << ", " << key1[matchIdx].y;
-			cout << ", desc2 = " << key2[j].x << ", " << key2[j].y << endl;
+			matchNum++;
 			// 紀錄當前最短距離者
 			dmatch[j].queryIdx = matchIdx;
 			dmatch[j].trainIdx = j;
@@ -329,32 +317,127 @@ void ORB_match(vector<LATCH::KeyPoint>& key1, vector<uint64_t>& desc1,
 			dmatch[j].distance = FLT_MAX;
 		}
 	}
-	cout << "link Num = " << linkNum << endl;
+	cout << "Match Num = " << matchNum << "/" << dmatch.size() << endl;
 }
+
 //====================================================================================
 int main(int argc, char const *argv[]) {
 	cvInitializeOpenCL();
-
 	Timer t1;
-	const ImgData img1("kanna.bmp");
-	const ImgData img2("kanna90.bmp");
-	//const ImgData img("kanna.bmp");
-	//const ImgData img("lena.bmp");
 
+	string name1, name2;
+	/*======================測資==========================*/
+	//name1 = "kanna.bmp", name2 = "kanna90.bmp"; // 90度測試
+	//name1 = "ball_01.bmp", name2 = "ball_02.bmp";
+	name1 = "sc02.bmp", name2 = "sc03.bmp";
+	/*===================================================*/
+
+	const ImgData img1(name1);
+	const ImgData img2(name2);
 
 	vector<LATCH::KeyPoint> key1, key2;
 	vector<uint64_t> desc1, desc2;
 	ORB_dsec(img1, key1, desc1);
 	ORB_dsec(img2, key2, desc2);
 
-	cout << "descNum=" << desc1.size()/8 << endl;
-	cout << "descNum=" << desc2.size()/8 << endl;
-	desc_distance(desc1, desc2, 0, 0);
 	// 匹配描述值
 	vector<DMatch> dmatch;
+	t1.start();
 	ORB_match(key1, desc1, key2, desc2, dmatch);
+	t1.print("ORB_match");
 	keyPt_drawMatchLine(img1, key1, img2, key2, dmatch);
 
+	using namespace cv;
+	// 隨機抽樣
+	vector<cv::Point2f> featPoint1;
+	vector<cv::Point2f> featPoint2;
+	for (size_t i = 0; i < dmatch.size(); i++) {
+		if (dmatch[i].distance != FLT_MAX && dmatch[i].queryIdx!=0 && dmatch[i].trainIdx!=0) {
+			int x = key1[dmatch[i].queryIdx].x;
+			int y = key1[dmatch[i].queryIdx].y;
+			int x2 = key2[dmatch[i].trainIdx].x;
+			int y2 = key2[dmatch[i].trainIdx].y;
+
+			cv::Point pt(x, y);
+			cv::Point pt2(x2, y2);
+			featPoint1.push_back(pt);
+			featPoint2.push_back(pt2);
+		}
+	}
+
+	// get Homography and RANSAC mask
+	vector<char> RANSAC_mask;
+	cv::Mat Hog = cv::findHomography(featPoint2, featPoint1, cv::RANSAC, 3, RANSAC_mask, 2000, 0.995);
+	//keyPt_drawMatchLine(img1, key1, img2, key2, dmatch, RANSAC_mask);
+
+
+	// 合併圖像
+	using uch = unsigned char;
+	ImgData matchImg(img1.width * 2, img1.height, img1.bits);
+	for (int j = 0; j < matchImg.height; j++) {
+		// img1
+		for (int i = 0; i < img1.width; i++) {
+			uch* mp = matchImg.at2d(j, i);
+			const uch* p1 = img1.at2d(j, i);
+			mp[0] = p1[0];
+			mp[1] = p1[1];
+			mp[2] = p1[2];
+		}
+		// img2
+		for (int i = 0; i < img2.width; i++) {
+			uch* mp = matchImg.at2d(j, i + img1.width);
+			const uch* p2 = img2.at2d(j, i);
+			mp[0] = p2[0];
+			mp[1] = p2[1];
+			mp[2] = p2[2];
+		}
+	}
+
+	
+	// 更新到 Dmatch
+	int RANNum = 0;
+	vector<cv::DMatch> RANmatch;
+	for (size_t i = 0; i < RANSAC_mask.size(); i++) {
+		if (RANSAC_mask[i] != 0) { // 正確的
+			int x1 = featPoint1[i].x;
+			int y1 = featPoint1[i].y;
+			int x2 = featPoint2[i].x + img2.width;
+			int y2 = featPoint2[i].y;
+			Draw::drawLineRGB_p(matchImg, y1, x1, y2, x2);
+			RANNum++;
+		}
+	}
+	matchImg.bmp("__mth.bmp");
+
+	cout << "RANNum = " << RANNum << endl;
+	cout << "Hog = \n" << Hog << endl;
 	return 0;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 //====================================================================================
+void cvInitializeOpenCL() {
+	cout << "cvInitializeOpenCL...\n";
+	const ImgData img1("kanna.bmp");
+	vector<LATCH::KeyPoint> key;
+	keyPt_HarrisCroner(key, img1.toConvertGray());
+	/*using namespace cv;
+	vector<Point2f> corners;
+	Mat cvImg(1, 1, CV_8U);
+	UMat ugray = cvImg.getUMat(ACCESS_RW);
+	Mat herrisMask(Mat::zeros(Size(cvImg.cols, cvImg.rows),CV_8U));
+	goodFeaturesToTrack(ugray, corners, 2000, 0.01, 3, herrisMask);*/
+	cout << "cvInitializeOpenCL...done\n\n";
+}
