@@ -157,6 +157,7 @@
   <ItemGroup>
     <ClInclude Include="fastlib\fast.h" />
     <ClInclude Include="LATCH\LATCH.h" />
+    <ClInclude Include="OpenBMP\OpenBMP.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
