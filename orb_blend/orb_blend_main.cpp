@@ -49,6 +49,14 @@ void keyPt_HarrisCroner(vector<LATCH::KeyPoint>& key,
 	using cv::Mat;
 	using cv::UMat;
 
+	int minEdg = std::min(grayImg.width, grayImg.height);
+	int HarrisNum = 384;
+	int Harrisdis = minEdg/20;
+
+	Harrisdis = std::max(Harrisdis, 3);
+	Harrisdis = std::min(Harrisdis, 50);
+
+
 	// 初始化mask --- >0ms
 	Mat cvImg(grayImg.height, grayImg.width, CV_8U, (void*)grayImg.raw_img.data());
 	Mat herrisMask(Mat::zeros(cv::Size(grayImg.width, grayImg.height), CV_8U));
@@ -71,9 +79,9 @@ void keyPt_HarrisCroner(vector<LATCH::KeyPoint>& key,
 	UMat ucvImg = cvImg.getUMat(cv::ACCESS_RW);
 	if (corner.posi != nullptr) { // todo 拿掉會變成找不到機角度都朝45度，不知道怎樣
 		//goodFeaturesToTrack(ucvImg, corners, 445, 0.01, 30, cv::noArray(), 3, true);
-		goodFeaturesToTrack(ucvImg, corners, 445, 0.01, 3, herrisMask, 3, true);
+		//goodFeaturesToTrack(ucvImg, corners, 445, 0.01, 3, herrisMask, 3, true);
 	} else {
-		goodFeaturesToTrack(ucvImg, corners, 445, 0.01, 30, cv::noArray(), 3, true);
+		goodFeaturesToTrack(ucvImg, corners, HarrisNum, 0.01, Harrisdis, cv::noArray(), 3, true);
 	}
 
 	// 輸出到 keyPt
@@ -287,7 +295,7 @@ void ORB_match(vector<LATCH::KeyPoint>& key1, vector<uint64_t>& desc1,
 	vector<LATCH::KeyPoint>& key2, vector<uint64_t>& desc2, vector<DMatch>& dmatch)
 {
 	dmatch.resize(key1.size());				// 由key1去找key2
-	const float matchDistance = 256;			// 少於多少距離才選定
+	const float matchDistance = 128;			// 少於多少距離才選定
 	const float noMatchDistance = 384;		// 大於多少距離就不連
 
 	int matchNum = 0;
@@ -328,8 +336,8 @@ int main(int argc, char const *argv[]) {
 	string name1, name2;
 	/*======================測資==========================*/
 	//name1 = "kanna.bmp", name2 = "kanna90.bmp"; // 90度測試
-	//name1 = "ball_01.bmp", name2 = "ball_02.bmp";
-	name1 = "sc02.bmp", name2 = "sc03.bmp";
+	name1 = "ball_01.bmp", name2 = "ball_02.bmp";
+	//name1 = "sc02.bmp", name2 = "sc03.bmp";
 	/*===================================================*/
 
 	const ImgData img1(name1);
@@ -367,7 +375,9 @@ int main(int argc, char const *argv[]) {
 
 	// get Homography and RANSAC mask
 	vector<char> RANSAC_mask;
+	t1.start();
 	cv::Mat Hog = cv::findHomography(featPoint2, featPoint1, cv::RANSAC, 3, RANSAC_mask, 2000, 0.995);
+	t1.print("findHomography");
 	//keyPt_drawMatchLine(img1, key1, img2, key2, dmatch, RANSAC_mask);
 
 
