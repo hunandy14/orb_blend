@@ -16,8 +16,11 @@
     <Filter Include="fast">
       <UniqueIdentifier>{cf8ab753-a24d-4898-9134-d29741e06cc9}</UniqueIdentifier>
     </Filter>
-    <Filter Include="LATCH">
+    <Filter Include="fast\LATCH">
       <UniqueIdentifier>{904c620e-cc92-42da-86e2-fef311338d5c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="orb">
+      <UniqueIdentifier>{33e3ece5-65ea-4125-900c-8b1c6aa26a57}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -42,16 +45,22 @@
     <ClCompile Include="fastlib\fast.cpp">
       <Filter>fast</Filter>
     </ClCompile>
+    <ClCompile Include="orb\orb.cpp">
+      <Filter>orb</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="fastlib\fast.h">
       <Filter>fast</Filter>
     </ClInclude>
     <ClInclude Include="LATCH\LATCH.h">
-      <Filter>LATCH</Filter>
+      <Filter>fast\LATCH</Filter>
     </ClInclude>
     <ClInclude Include="OpenBMP\OpenBMP.hpp">
       <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="orb\orb.hpp">
+      <Filter>orb</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

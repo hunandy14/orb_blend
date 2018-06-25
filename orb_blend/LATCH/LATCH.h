@@ -54,6 +54,9 @@
 #include <thread>
 #include <vector>
 
+
+#define NO_AVX_PLEASE
+
 // angle in RADIANS
 namespace LATCH {
 
