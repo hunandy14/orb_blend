@@ -12,9 +12,6 @@
     <Filter Include="orb">
       <UniqueIdentifier>{33e3ece5-65ea-4125-900c-8b1c6aa26a57}</UniqueIdentifier>
     </Filter>
-    <Filter Include="LATCH">
-      <UniqueIdentifier>{904c620e-cc92-42da-86e2-fef311338d5c}</UniqueIdentifier>
-    </Filter>
     <Filter Include="FAST9">
       <UniqueIdentifier>{3e5f6ffe-3d30-4417-aad0-c9f7a0d73d3b}</UniqueIdentifier>
     </Filter>
@@ -35,9 +32,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="LATCH\LATCH.h">
-      <Filter>LATCH</Filter>
-    </ClInclude>
     <ClInclude Include="OpenBMP\OpenBMP.hpp">
       <Filter>標頭檔</Filter>
     </ClInclude>
@@ -46,6 +40,9 @@
     </ClInclude>
     <ClInclude Include="FAST9\FAST9.hpp">
       <Filter>FAST9</Filter>
+    </ClInclude>
+    <ClInclude Include="orb\LATCH.h">
+      <Filter>orb</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
