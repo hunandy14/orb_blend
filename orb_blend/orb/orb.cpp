@@ -15,32 +15,20 @@ using namespace std;
 
 #define ORB_DSET_R 15
 
+// =====================================================================================
+/// 資料結構
+
 namespace ORB {
+
 struct Point {
 	int x;
 	int y;
 };
-class DMatch
-{
-public:
-	DMatch() : queryIdx(-1), trainIdx(-1), imgIdx(-1), distance(FLT_MAX) {}
-	DMatch(int _queryIdx, int _trainIdx, float _distance) :
-		queryIdx(_queryIdx), trainIdx(_trainIdx), imgIdx(-1), distance(_distance) {}
 
-	DMatch(int _queryIdx, int _trainIdx, int _imgIdx, float _distance) :
-		queryIdx(_queryIdx), trainIdx(_trainIdx), imgIdx(_imgIdx), distance(_distance) {}
-
-
-	int queryIdx; // query descriptor index
-	int trainIdx; // train descriptor index
-	int imgIdx;   // train image index
-
+struct DMatch{
+	int queryIdx;
+	int trainIdx;
 	float distance;
-
-	// less is better
-	bool operator < (const DMatch &m) const {
-		return distance < m.distance;
-	}
 };
 
 }; // namespace ORB
@@ -140,7 +128,67 @@ void keyPt_drawMatchLine(
 	//cout << "draw Num = " << drawNum << "/" << dmatch.size() << endl;
 	matchImg.bmp(name);
 }
+void keyPt_drawRANSACLine(const ImgData& img1, vector<LATCH::KeyPoint>& key1, 
+	const ImgData& img2, vector<LATCH::KeyPoint>& key2,
+	vector<ORB::DMatch>& dmatch, string name = "__matchImg.bmp")
+{
+	vector<cv::Point> fp1, fp2;
 
+	// 獲取有效座標
+	for (int i=0, c=0; i < dmatch.size(); i++) {
+		if (dmatch[i].distance != FLT_MAX) {
+			int x1 = key1[dmatch[i].queryIdx].x;
+			int y1 = key1[dmatch[i].queryIdx].y;
+			int x2 = key2[dmatch[i].trainIdx].x;
+			int y2 = key2[dmatch[i].trainIdx].y;
+			fp1.emplace_back(cv::Point(x1, y1));
+			fp2.emplace_back(cv::Point(x2, y2));
+		}
+	}
+	// 隨機抽樣
+	vector<uint8_t> RANSAC_mask;
+	cv::Mat Hog = cv::findHomography(fp2, fp1, cv::RANSAC, 3, RANSAC_mask, 2000, 0.995);
+
+	// 合併圖像
+	using uch = unsigned char;
+	ImgData matchImg(img1.width * 2, img1.height, img1.bits);
+	for (int j = 0; j < matchImg.height; j++) {
+		// img1
+		for (int i = 0; i < img1.width; i++) {
+			uch* mp = matchImg.at2d(j, i);
+			const uch* p1 = img1.at2d(j, i);
+			mp[0] = p1[0];
+			mp[1] = p1[1];
+			mp[2] = p1[2];
+		}
+		// img2
+		for (int i = 0; i < img2.width; i++) {
+			uch* mp = matchImg.at2d(j, i + img1.width);
+			const uch* p2 = img2.at2d(j, i);
+			mp[0] = p2[0];
+			mp[1] = p2[1];
+			mp[2] = p2[2];
+		}
+	}
+	// 畫線
+	int RANNum = 0;
+	vector<cv::DMatch> RANmatch;
+	for (size_t i = 0; i < RANSAC_mask.size(); i++) {
+		if (RANSAC_mask[i] != 0) { // 正確的
+			int x1 = fp1[i].x;
+			int y1 = fp1[i].y;
+			int x2 = fp2[i].x + img2.width;
+			int y2 = fp2[i].y;
+			Draw::drawLineRGB_p(matchImg, y1, x1, y2, x2);
+			RANNum++;
+		}
+	}
+
+	// 輸出
+	matchImg.bmp("__mth.bmp");
+	cout << "Hog = \n" << Hog << endl;
+	cout << "RANNum = " << RANNum << "/" << RANSAC_mask.size() << endl;
+}
 
 
 // =====================================================================================
@@ -262,13 +310,13 @@ void ORB_dsec(const ImgData& grayImg, vector<LATCH::KeyPoint>& key, vector<uint6
 
 	// FAST
 	//t1.start();
-	//FAST9 corner(grayImg);
+	FAST9 corner(grayImg);
 	//t1.print(" FAST12 Corner");
 	//FATS_drawPoint(img, corner); // 驗證::畫點
 
 	// Harris
 	t1.start();
-	//keyPt_HarrisCroner(key, grayImg, corner);
+	//HarrisCroner(key, grayImg, corner);
 	HarrisCroner(key, grayImg);
 	t1.print("    Harris Corner");
 	//cout << "Herris Corner num = " << key.size() << endl;
@@ -326,7 +374,34 @@ void ORB_match(vector<LATCH::KeyPoint>& key1, vector<uint64_t>& desc1,
 	cout << "Match Num = " << matchNum << "/" << dmatch.size() << endl;
 }
 // 獲取投影矩陣
+vector<double> findHomography(
+	vector<LATCH::KeyPoint>& key1, vector<LATCH::KeyPoint>& key2, vector<ORB::DMatch>& dmatch)
+{
+	vector<double> HomogMat;
 
+	// 獲取有效座標
+	vector<cv::Point> fp1, fp2;
+	for (int i=0, c=0; i < dmatch.size(); i++) {
+		if (dmatch[i].distance != FLT_MAX) {
+			int x1 = key1[dmatch[i].queryIdx].x;
+			int y1 = key1[dmatch[i].queryIdx].y;
+			int x2 = key2[dmatch[i].trainIdx].x;
+			int y2 = key2[dmatch[i].trainIdx].y;
+			fp1.emplace_back(cv::Point(x1, y1));
+			fp2.emplace_back(cv::Point(x2, y2));
+		}
+	}
+	// 隨機抽樣
+	cv::Mat Hog = cv::findHomography(fp2, fp1, cv::RANSAC);
+
+	// 輸出到 hog
+	HomogMat.resize(Hog.cols*Hog.rows);
+	for (int i = 0; i < HomogMat.size(); i++)
+		HomogMat[i] = Hog.at<double>(i);
+	cout << "Hog = " << Hog << endl;
+
+	return HomogMat;
+}
 
 
 
@@ -356,75 +431,9 @@ void ORB_test(const ImgData& img1, const ImgData& img2) {
 	cout << endl;
 	//keyPt_drawMatchLine(img1, key1, img2, key2, dmatch);
 
-	using namespace cv;
-	// 隨機抽樣
-	vector<cv::Point> fp1;
-	vector<cv::Point> fp2;
-	for (size_t i = 0; i < dmatch.size(); i++) {
-		if (dmatch[i].distance != FLT_MAX && dmatch[i].queryIdx != 0 && dmatch[i].trainIdx != 0) {
-			int x1 = key1[dmatch[i].queryIdx].x;
-			int y1 = key1[dmatch[i].queryIdx].y;
-			int x2 = key2[dmatch[i].trainIdx].x;
-			int y2 = key2[dmatch[i].trainIdx].y;
-
-			cv::Point pt1(x1, y1);
-			cv::Point pt2(x2, y2);
-			fp1.push_back(pt1);
-			fp2.push_back(pt2);
-		}
-	}
-
-	// get Homography and RANSAC mask
-	vector<uint8_t> RANSAC_mask;
-	t1.start();
-	cv::Mat Hog = cv::findHomography(fp2, fp1, cv::RANSAC, 3, RANSAC_mask, 2000, 0.995);
-	t1.print("  findHomography");
-	cout << endl;
-	t0.print("## ALL");
-	cout << "Hog = \n" << Hog << endl;
-
-
-
-
-	// 合併圖像
-	using uch = unsigned char;
-	ImgData matchImg(img1.width * 2, img1.height, img1.bits);
-	for (int j = 0; j < matchImg.height; j++) {
-		// img1
-		for (int i = 0; i < img1.width; i++) {
-			uch* mp = matchImg.at2d(j, i);
-			const uch* p1 = img1.at2d(j, i);
-			mp[0] = p1[0];
-			mp[1] = p1[1];
-			mp[2] = p1[2];
-		}
-		// img2
-		for (int i = 0; i < img2.width; i++) {
-			uch* mp = matchImg.at2d(j, i + img1.width);
-			const uch* p2 = img2.at2d(j, i);
-			mp[0] = p2[0];
-			mp[1] = p2[1];
-			mp[2] = p2[2];
-		}
-	}
-
-
-	// 更新到 Dmatch
-	int RANNum = 0;
-	vector<cv::DMatch> RANmatch;
-	for (size_t i = 0; i < RANSAC_mask.size(); i++) {
-		if (RANSAC_mask[i] != 0) { // 正確的
-			int x1 = fp1[i].x;
-			int y1 = fp1[i].y;
-			int x2 = fp2[i].x + img2.width;
-			int y2 = fp2[i].y;
-			Draw::drawLineRGB_p(matchImg, y1, x1, y2, x2);
-			RANNum++;
-		}
-	}
-	matchImg.bmp("__mth.bmp");
-
-	cout << "RANNum = " << RANNum << endl;
+	// 投影矩陣
+	vector<double> HomogMat = findHomography(key1, key2, dmatch);
+	keyPt_drawRANSACLine(img1, key1, img2, key2, dmatch);
 }
 
 
