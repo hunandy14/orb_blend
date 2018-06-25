@@ -39,6 +39,7 @@ struct DMatch{
 
 void FATS_drawPoint(ImgData out, const FAST9& pt, string name = "_FSATCorner") {
 	using uch = unsigned char;
+	out.convertRGB();
 	auto drawRGB = [](uch* p, uch r, uch g, uch b) {
 		p[0] = r, p[1] = g, p[2] = b;
 	};
@@ -59,6 +60,7 @@ void FATS_drawPoint(ImgData out, const FAST9& pt, string name = "_FSATCorner") {
 void keyPt_drawPoint(ImgData out, const vector<LATCH::KeyPoint>& corner, string name = "_drawKeyPt")
 {
 	using uch = unsigned char;
+	out.convertRGB();
 	auto drawRGB = [](uch* p, uch r, uch g, uch b) {
 		p[0] = r, p[1] = g, p[2] = b;
 	};
@@ -79,6 +81,7 @@ void keyPt_drawPoint(ImgData out, const vector<LATCH::KeyPoint>& corner, string 
 void keyPt_drawAngle(ImgData out, const vector<LATCH::KeyPoint>& key, string name = "_drawKeyPtAngle")
 {
 	using uch = unsigned char;
+	out.convertRGB();
 	for (size_t i = 0; i < key.size(); i++) {
 		const int x = (int)key[i].x;
 		const int y = (int)key[i].y;
@@ -195,8 +198,39 @@ void keyPt_drawRANSACLine(const ImgData& img1, vector<LATCH::KeyPoint>& key1,
 /// ORB 流程
 
 // Harris 角點檢測
-void HarrisCroner(vector<LATCH::KeyPoint>& key,
-	const basic_ImgData& grayImg, const FAST9& pt = FAST9())
+void HarrisCroner(vector<LATCH::KeyPoint>& key, const basic_ImgData& grayImg)
+{
+	using cv::Mat;
+	using cv::UMat;
+
+	int edgeMaskDist = ORB_DSET_R;
+	int HarrisNum = 256;
+	int HarrisDist = std::min(grayImg.width, grayImg.height) / 20;
+	HarrisDist = std::max(HarrisDist, 3);
+	HarrisDist = std::min(HarrisDist, 50);
+
+	// Herris 角點啟用 GPU 運算
+	vector<cv::Point2f> corners;
+	Mat cvImg(grayImg.height, grayImg.width, CV_8U, (void*)grayImg.raw_img.data());
+	UMat ucvImg = cvImg.getUMat(cv::ACCESS_READ);
+
+	// 過濾邊緣的MASK
+	Mat edgeMask(Mat::zeros(cv::Size(grayImg.width, grayImg.height), CV_8U));
+	for (int j = edgeMaskDist; j < grayImg.height - edgeMaskDist; j++) {
+		for (int i = edgeMaskDist; i < grayImg.width - edgeMaskDist; i++) {
+			int idx = j * grayImg.width + i;
+			edgeMask.at<uchar>(idx) = 255;
+		}
+	}
+	goodFeaturesToTrack(ucvImg, corners, HarrisNum, 0.01, HarrisDist, edgeMask, 3, true);
+
+	// 輸出到 keyPt
+	key.clear();
+	for (auto&& kp : corners) {
+		key.emplace_back(kp.x, kp.y, 31.f, -1.f);
+	}
+}
+void oFASTCroner(vector<LATCH::KeyPoint>& key, const basic_ImgData& grayImg)
 {
 	using cv::Mat;
 	using cv::UMat;
@@ -208,15 +242,15 @@ void HarrisCroner(vector<LATCH::KeyPoint>& key,
 	HarrisDist = std::max(HarrisDist, 3);
 	HarrisDist = std::min(HarrisDist, 50);
 
-
 	// Herris 角點啟用 GPU 運算
 	vector<cv::Point2f> corners;
 	Mat cvImg(grayImg.height, grayImg.width, CV_8U, (void*)grayImg.raw_img.data());
 	UMat ucvImg = cvImg.getUMat(cv::ACCESS_READ);
 
+	// FAST 遮罩
+	FAST9 pt(grayImg);
 
-	// 如果有輸入 FAST 遮罩
-	if (0) {
+	if (pt.pt!=nullptr) {
 		Mat FASTMask(Mat::zeros(cv::Size(grayImg.width, grayImg.height), CV_8U));
 		for (int i = 0; i < pt.num; i++) {
 			int x = pt.pt[i].x;
@@ -230,20 +264,7 @@ void HarrisCroner(vector<LATCH::KeyPoint>& key,
 			}
 		}
 		goodFeaturesToTrack(ucvImg, corners, 445, 0.01, 3, FASTMask, 3, true);
-	} 
-	// 如果沒有輸入 FAST 遮罩
-	else { 
-		// 過濾邊緣的MASK
-		Mat edgeMask(Mat::zeros(cv::Size(grayImg.width, grayImg.height), CV_8U));
-		for (int j = edgeMaskDist; j < grayImg.height - edgeMaskDist; j++) {
-			for (int i = edgeMaskDist; i < grayImg.width - edgeMaskDist; i++) {
-				int idx = j * grayImg.width + i;
-				edgeMask.at<uchar>(idx) = 255;
-			}
-		}
-		goodFeaturesToTrack(ucvImg, corners, HarrisNum, 0.01, HarrisDist, edgeMask, 3, true);
 	}
-
 
 	// 輸出到 keyPt
 	key.clear();
@@ -306,28 +327,21 @@ int descDistance(const vector<uint64_t>& desc1, const vector<uint64_t>& desc2, i
 // ORB 描述
 void ORB_dsec(const ImgData& grayImg, vector<LATCH::KeyPoint>& key, vector<uint64_t>& desc) {
 	Timer t1;
-	t1.priSta = 1;
-
-	// FAST
-	//t1.start();
-	FAST9 corner(grayImg);
-	//t1.print(" FAST12 Corner");
-	//FATS_drawPoint(img, corner); // 驗證::畫點
-
-	// Harris
+	t1.priSta = 0;
+	
+	// KeyPoint
 	t1.start();
-	//HarrisCroner(key, grayImg, corner);
 	HarrisCroner(key, grayImg);
+	//oFASTCroner(key, grayImg);
 	t1.print("    Harris Corner");
 	//cout << "Herris Corner num = " << key.size() << endl;
-	//keyPt_drawPoint(img, key); // 驗證::畫點
+	//keyPt_drawPoint(grayImg, key); // 驗證::畫點
 
 	// angle
 	t1.start();
 	grayCentroidAngle(key, grayImg);
 	t1.print("    keyPt_grayCentroidAngle");
-	//keyPt_drawAngle(img, key); // 驗證::畫箭頭
-
+	//keyPt_drawAngle(grayImg, key); // 驗證::畫箭頭
 
 	// desc
 	t1.start();
@@ -345,13 +359,15 @@ void ORB_match(vector<LATCH::KeyPoint>& key1, vector<uint64_t>& desc1,
 	const float noMatchDistance = 192;		// 大於多少距離就不連
 
 	int matchNum = 0;
-	for (int j = 1; j < key1.size(); j++) {
+	for (int j = 0; j < key1.size(); j++) {
 		float& distMin = dmatch[j].distance;
 		int& matchIdx = dmatch[j].trainIdx;
 		// key1[0]去尋找 key2[all] 中最短距離者
-		for (int i = 1; i < key2.size(); i++) {
+		distMin = FLT_MAX;
+		for (int i = 0; i < key2.size(); i++) {
 			int dist = descDistance(desc2, desc1, j, i);
-			if (dist > noMatchDistance) continue;
+			if (dist > noMatchDistance)
+				continue;
 			if (dist < distMin) {
 				distMin = dist;
 				matchIdx = i;
@@ -404,11 +420,12 @@ vector<double> findHomography(
 }
 
 
-
-
 // =====================================================================================
-void ORB_test(const ImgData& img1, const ImgData& img2) {
+/// 公開函式
+// ORB 獲得投影矩陣
+vector<double> ORB_Homography(const ImgData& img1, const ImgData& img2) {
 	Timer t1, t0;
+	t1.priSta = 0;
 	// 轉灰階
 	const ImgData gray1 = img1.toConvertGray();
 	const ImgData gray2 = img2.toConvertGray();
@@ -432,8 +449,46 @@ void ORB_test(const ImgData& img1, const ImgData& img2) {
 	//keyPt_drawMatchLine(img1, key1, img2, key2, dmatch);
 
 	// 投影矩陣
-	vector<double> HomogMat = findHomography(key1, key2, dmatch);
-	keyPt_drawRANSACLine(img1, key1, img2, key2, dmatch);
+	vector<double> HomogMat;
+	if (dmatch.size() > 3) {
+		HomogMat = findHomography(key1, key2, dmatch);
+		//keyPt_drawRANSACLine(img1, key1, img2, key2, dmatch);
+	}
+	t0.print("findHomography");
+
+	return HomogMat;
+}
+
+// 測試函式
+void ORB_test(const ImgData& img1, const ImgData& img2) {
+	Timer t1, t0;
+	// 轉灰階
+	const ImgData gray1 = img1.toConvertGray();
+	const ImgData gray2 = img2.toConvertGray();
+
+	t0.start();
+	// 取得關鍵點與描述值
+	vector<LATCH::KeyPoint> key1, key2;
+	vector<uint64_t> desc1, desc2;
+	t1.start();
+	ORB_dsec(gray1, key1, desc1);
+	ORB_dsec(gray2, key2, desc2);
+	t1.print("  ORB_desc");
+	cout << endl;
+
+	// 匹配描述值
+	vector<ORB::DMatch> dmatch;
+	t1.start();
+	ORB_match(key1, desc1, key2, desc2, dmatch);
+	t1.print("  ORB_match");
+	cout << endl;
+	keyPt_drawMatchLine(img1, key1, img2, key2, dmatch);
+
+	// 投影矩陣
+	if (dmatch.size() > 3) {
+		vector<double> HomogMat = findHomography(key1, key2, dmatch);
+		keyPt_drawRANSACLine(img1, key1, img2, key2, dmatch);
+	}
 }
 
 
@@ -441,14 +496,16 @@ void ORB_test(const ImgData& img1, const ImgData& img2) {
 // =====================================================================================
 void cvInitializeOpenCL() {
 	cout << "cvInitializeOpenCL...\n";
-	const ImgData img1("kanna.bmp");
+	/*const ImgData img1("kanna.bmp");
 	vector<LATCH::KeyPoint> key;
-	HarrisCroner(key, img1.toConvertGray());
-	/*using namespace cv;
-	vector<Point2f> corners;
+	HarrisCroner(key, img1.toConvertGray());*/
+	
+	using namespace cv;
+
 	Mat cvImg(1, 1, CV_8U);
 	UMat ugray = cvImg.getUMat(ACCESS_RW);
-	Mat herrisMask(Mat::zeros(Size(cvImg.cols, cvImg.rows),CV_8U));
-	goodFeaturesToTrack(ugray, corners, 2000, 0.01, 3, herrisMask);*/
+
+	vector<Point2f> corners;
+	goodFeaturesToTrack(ugray, corners, 2000, 0.01, 3);
 	cout << "cvInitializeOpenCL...done\n\n";
 }
