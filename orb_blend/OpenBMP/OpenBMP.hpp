@@ -539,7 +539,7 @@ public: // 自訂方法
 		}
 		return img;
 	}
-		ImgData toSnip (uint32_t width, uint32_t height, uint32_t y=0, uint32_t x=0) const {
+	ImgData toSnip (uint32_t width, uint32_t height, uint32_t y=0, uint32_t x=0) const {
 		// 檢查超過邊界
 		if (width+x > this->width || height+y > this->height)
 			throw std::out_of_range("toSnip() out of range");

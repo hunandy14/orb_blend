@@ -102,7 +102,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)OpenBMP;$(ProjectDir)LATCH;$(ProjectDir)fastlib;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)OpenBMP;$(ProjectDir)LATCH;$(ProjectDir)FAST9;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -138,7 +138,7 @@
       <OpenMPSupport>true</OpenMPSupport>
       <LanguageStandard>
       </LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)OpenBMP;$(ProjectDir)LATCH;$(ProjectDir)fastlib;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)OpenBMP;$(ProjectDir)LATCH;$(ProjectDir)FAST9;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -148,17 +148,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="fastlib\fast.cpp" />
-    <ClCompile Include="fastlib\fast_10.cpp" />
-    <ClCompile Include="fastlib\fast_11.cpp" />
-    <ClCompile Include="fastlib\fast_12.cpp" />
-    <ClCompile Include="fastlib\fast_9.cpp" />
-    <ClCompile Include="fastlib\nonmax.cpp" />
+    <ClCompile Include="FAST9\FAST9.cpp" />
     <ClCompile Include="orb\orb.cpp" />
     <ClCompile Include="orb_blend_main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="fastlib\fast.h" />
+    <ClInclude Include="FAST9\FAST9.hpp" />
     <ClInclude Include="LATCH\LATCH.h" />
     <ClInclude Include="OpenBMP\OpenBMP.hpp" />
     <ClInclude Include="orb\orb.hpp" />
