@@ -2,12 +2,13 @@
 #include <bitset>
 #include <vector>
 #include <string>
+#include <cmath>
 using namespace std;
 
 #include <opencv2/opencv.hpp>
 //using namespace cv;
 
-#include <timer.hpp>
+#include "Timer.hpp"
 #include "OpenBMP.hpp"
 #include "LATCH.h"
 #include "orb.hpp"
@@ -548,96 +549,64 @@ auto getWarpOffset(
 {
 	const int ptSize = key1.size();
 	// 中間值.
-	const float&& mid_x1 = (float)img1.width / 2.f;
-	const float&& mid_x2 = (float)img2.width / 2.f;
-	const float&& mid_y1 = (float)img1.height / 2.f;
-	const float&& mid_y2 = (float)img2.height / 2.f;
+	const float mid_x1 = (float)img1.width / 2.f;
+	const float mid_x2 = (float)img2.width / 2.f;
+	const float mid_y1 = (float)img1.height / 2.f;
+	const float mid_y2 = (float)img2.height / 2.f;
 	// 先算平方.
-	const float& fL1 = FL;
-	const float& fL2 = FL;
-	const float&& fL1_pow = pow(fL1, 2);
-	const float&& fL2_pow = pow(fL2, 2);
+	const float fL1 = FL;
+	const float fL2 = FL;
+	const float fL1_pow = powf(fL1, 2.f);
+	const float fL2_pow = powf(fL2, 2.f);
 
-	int cal_dx(0), cal_dy(0);
+	float cal_dx=0, cal_dy=0;
 
-#pragma omp parallel for
+//#pragma omp parallel for
 	for (int i = 0; i < ptSize-1; i++) {
 		const LATCH::KeyPoint& pt1 = key1[i];
 		const LATCH::KeyPoint& pt2 = key2[i];
-		const float imgX1 = pt1.x;
-		const float imgY1 = pt1.y;
-		const float imgX2 = pt2.x;
-		const float imgY2 = pt2.y;
+		const float& imgX1 = pt1.x;
+		const float& imgY1 = pt1.y;
+		const float& imgX2 = pt2.x;
+		const float& imgY2 = pt2.y;
 
 		// 圖1
 		float theta1 = fastAtanf_rad((imgX1 - mid_x1) / fL1);
 		float h1 = imgY1 - mid_y1;
-		h1 /= sqrt(pow((imgX1 - mid_x1), 2) + fL1_pow);
-		int x1 = (int)(fL1*theta1 + mid_x1+.5);
-		int y1 = (int)(fL1*h1 + mid_y1+.5);
+		h1 /= sqrtf(powf((imgX1 - mid_x1), 2) + fL1_pow);
+		float x1 = (fL1*theta1 + mid_x1+.5);
+		float y1 = (fL1*h1 + mid_y1+.5);
 		// 圖2
 		float theta2 = fastAtanf_rad((imgX2 - mid_x2) / fL2);
 		float h2 = imgY2 - mid_y2;
-		h2 /= sqrt(pow((imgX2 - mid_x2), 2) + fL2_pow);
-		int x2 = (int)(fL2*theta2 + mid_x2 + img1.width +.5);
-		int y2 = (int)(fL2*h2 + mid_y2 +.5);
+		h2 /= sqrtf(powf((imgX2 - mid_x2), 2) + fL2_pow);
+		float x2 = (fL2*theta2 + mid_x2 + img1.width +.5);
+		float y2 = (fL2*h2 + mid_y2 +.5);
 		// 累加座標.
-		int distX = x2 - x1;
-		int distY = img1.height - y1 + y2;
+		float distX = x2 - x1;
+		float distY = (float)img1.height - y1 + y2;
 		cal_dx += distX;
 		cal_dy += distY;
 	}
 
 	// 平均座標.
-	int avg_dx = (float)cal_dx / (float)(ptSize-1);
-	int avg_dy = (float)cal_dy / (float)(ptSize-1);
+	int avg_dx = round(cal_dx / (ptSize-1));
+	int avg_dy = round(cal_dy / (ptSize-1));
 
-	// 修正座標(猜測是4捨5入哪裡怎樣沒寫好才變成這樣).
-	if(avg_dx % 2 == 0){
-		if( img1.width-avg_dx + 1 <= img1.width && img1.width- avg_dx + 1 <= img2.width){
-			//avg_dx += 1;
-		} else{
-			//avg_dx -= 1;
-		}
-	} 
-	else if(avg_dx % 2 == 1) {
-		avg_dx += +0; // 越多右圖越往 <-
-	}
-
-	static int num=-1;
-	++num;
-	if(avg_dy % 2 == 0){
-		if(img1.height-avg_dy + 1 <= img1.height && img1.height-avg_dy + 1 <= img2.height
-			and abs((int)img1.height-avg_dy)>1){
-			avg_dy += 1;
-			//cout << abs(avg_dy) <<"   ############# this Y is up" << num << endl;
-
-		} else{
-			avg_dy -= 1;
-			//cout << abs(avg_dy) <<"	  ########### this Y is dw"<<num << endl;
-
-		}
-	} 
-	else if(avg_dy % 2 == 1){
-		//avg_dy+=0; // 越多右圖越往上
-		//avg_dx-=1; // 越多右圖越往上
-		//cout << "		############ this Y is else"<<num << endl;
-	}
-	cout << endl;
 	// 假如 y 的偏移量大於圖片高
 	int xM, yM;
 	if(avg_dy > img1.height) {
 		int dyy = -((int)img1.height - abs((int)img1.height - avg_dy));
 		int xMove = avg_dx;
 		int yMove = dyy;
-		xM = img1.width - xMove;
-		yM = -(int)img1.height - yMove;
+		xM = (int)img1.width - xMove;
+		yM = -((int)img1.height) - yMove;
 	} else { // 通常情況
 		int xMove = avg_dx;
 		int yMove = avg_dy;
 
-		xM = img1.width - xMove;
-		yM = img1.height - yMove;
+		xM = (int)img1.width - xMove;
+		yM = (int)img1.height - yMove;
 	}
 
 	// 輸出座標
@@ -653,7 +622,7 @@ auto getWarpOffset(
 // ORB 獲得投影矩陣
 ORB::warpData ORB_Homography(const ImgData& img1, const ImgData& img2) {
 	Timer t1, t0;
-	t1.priSta = 0;
+	t1.priSta = 1;
 	// 轉灰階
 	const ImgData gray1 = img1.toConvertGray();
 	const ImgData gray2 = img2.toConvertGray();
@@ -694,10 +663,14 @@ ORB::warpData ORB_Homography(const ImgData& img1, const ImgData& img2) {
 
 	// 估算焦距
 	double focals;
+	t1.start();
 	focals = estimateFocal(HomogMat);
+	t1.print("  estimateFocal");
 	cout << "focals = " << focals << endl;
 	// 估算偏移
+	t1.start();
 	ORB::Point offsetPt = getWarpOffset(img1, key1, img2, key2, focals);
+	t1.print("  getWarpOffset");
 	cout << "ofset = " << offsetPt.x << ", " << offsetPt.y << endl;
 
 

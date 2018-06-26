@@ -19,6 +19,9 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
+    <Filter Include="LapBlend">
+      <UniqueIdentifier>{fe53816d-8a7d-465b-8eaa-aac6a1f8725d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="orb_blend_main.cpp">
@@ -29,6 +32,9 @@
     </ClCompile>
     <ClCompile Include="FAST9\FAST9.cpp">
       <Filter>FAST9</Filter>
+    </ClCompile>
+    <ClCompile Include="LapBlend\LapBlend.cpp">
+      <Filter>LapBlend</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -43,6 +49,9 @@
     </ClInclude>
     <ClInclude Include="orb\LATCH.h">
       <Filter>orb</Filter>
+    </ClInclude>
+    <ClInclude Include="LapBlend\LapBlend.hpp">
+      <Filter>LapBlend</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
