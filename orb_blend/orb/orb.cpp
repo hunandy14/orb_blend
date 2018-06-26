@@ -14,6 +14,11 @@ using namespace std;
 #include "FAST9.hpp"
 
 #define ORB_DSET_R 15
+#define HARRIS_total 20000
+#define HARRIS_DIST 3
+#define HARRIS_de 3
+#define ORB_DIST 96
+#define ORB_DISTMAX 128
 
 
 
@@ -176,7 +181,45 @@ void keyPt_drawRANSACLine(const ImgData& img1, vector<LATCH::KeyPoint>& key1,
 	cout << "Hog = \n" << Hog << endl;
 	cout << "RANNum = " << RANNum << "/" << RANSAC_mask.size() << endl;
 }
-
+void keyPt_drawMatchLine(
+	const ImgData& img1, vector<LATCH::KeyPoint>& key1, 
+	const ImgData& img2, vector<LATCH::KeyPoint>& key2,
+	string name = "__matchImg.bmp")
+{
+	using uch = unsigned char;
+	// 合併圖像
+	ImgData matchImg(img1.width * 2, img1.height, img1.bits);
+	for (int j = 0; j < matchImg.height; j++) {
+		// img1
+		for (int i = 0; i < img1.width; i++) {
+			uch* mp = matchImg.at2d(j, i);
+			const uch* p1 = img1.at2d(j, i);
+			mp[0] = p1[0];
+			mp[1] = p1[1];
+			mp[2] = p1[2];
+		}
+		// img2
+		for (int i = 0; i < img2.width; i++) {
+			uch* mp = matchImg.at2d(j, i + img1.width);
+			const uch* p2 = img2.at2d(j, i);
+			mp[0] = p2[0];
+			mp[1] = p2[1];
+			mp[2] = p2[2];
+		}
+	}
+	// 連線
+	int drawNum = 0;
+	for (size_t i = 0; i < key1.size(); i++) {
+		int x1 = key1[i].x;
+		int y1 = key1[i].y;
+		int x2 = key2[i].x + img2.width;
+		int y2 = key2[i].y;
+		Draw::drawLineRGB_p(matchImg, y1, x1, y2, x2);
+		drawNum++;
+	}
+	cout << "draw Num = " << drawNum << endl;
+	matchImg.bmp(name);
+}
 
 
 // =====================================================================================
@@ -189,8 +232,8 @@ void HarrisCroner(vector<LATCH::KeyPoint>& key, const basic_ImgData& grayImg)
 	using cv::UMat;
 
 	int edgeMaskDist = ORB_DSET_R;
-	int HarrisNum = 20000;
-	int HarrisDist = 3;
+	int HarrisNum = HARRIS_total;
+	int HarrisDist = HARRIS_DIST;
 	/*HarrisDist = std::min(grayImg.width, grayImg.height) / 20;
 	HarrisDist = std::max(HarrisDist, 3);
 	HarrisDist = std::min(HarrisDist, 3);*/
@@ -208,7 +251,7 @@ void HarrisCroner(vector<LATCH::KeyPoint>& key, const basic_ImgData& grayImg)
 			edgeMask.at<uchar>(idx) = 255;
 		}
 	}
-	int de=3;
+	int de = HARRIS_de;
 	goodFeaturesToTrack(ucvImg, corners, HarrisNum, 0.01, HarrisDist, edgeMask, 3, true);
 	goodFeaturesToTrack(ucvImg, corners, corners.size()>>de, 0.01, (HarrisDist<<de)+.5, edgeMask, 3, true);
 
@@ -335,9 +378,9 @@ void ORB_dsec(const ImgData& grayImg, vector<LATCH::KeyPoint>& key, vector<uint6
 void ORB_match(vector<LATCH::KeyPoint>& key1, vector<uint64_t>& desc1,
 	vector<LATCH::KeyPoint>& key2, vector<uint64_t>& desc2, vector<ORB::DMatch>& dmatch)
 {
-	dmatch.resize(key1.size());				// 由key1去找key2
-	const float matchDistance = 96;			// 少於多少距離才選定
-	const float noMatchDistance = 128;		// 大於多少距離就不連
+	dmatch.resize(key1.size());				  // 由key1去找key2
+	const float matchDistance = ORB_DIST;	  // 少於多少距離才選定
+	const float noMatchDistance = ORB_DISTMAX;// 大於多少距離就不連
 
 	int matchNum = 0;
 	for (int j = 0; j < key1.size(); j++) {
@@ -516,6 +559,8 @@ auto getWarpOffset(
 	const float&& fL2_pow = pow(fL2, 2);
 
 	int cal_dx(0), cal_dy(0);
+
+#pragma omp parallel for
 	for (int i = 0; i < ptSize-1; i++) {
 		const LATCH::KeyPoint& pt1 = key1[i];
 		const LATCH::KeyPoint& pt2 = key2[i];
@@ -657,7 +702,10 @@ ORB::warpData ORB_Homography(const ImgData& img1, const ImgData& img2) {
 
 
 	ORB::warpData warpdata{HomogMat, offsetPt, focals};
+	
 	t0.print("ORB::all run time");
+	// RANSAC 連線圖
+	keyPt_drawMatchLine(img1, key1, img2, key2, "__RANSACmatchImg.bmp");
 	return warpdata;
 }
 
