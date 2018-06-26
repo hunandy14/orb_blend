@@ -34,6 +34,7 @@ struct DMatch{
 }; // namespace ORB
 
 
+
 // =====================================================================================
 /// 輸出測試圖函式
 
@@ -196,6 +197,7 @@ void keyPt_drawRANSACLine(const ImgData& img1, vector<LATCH::KeyPoint>& key1,
 }
 
 
+
 // =====================================================================================
 /// ORB 流程
 
@@ -206,10 +208,11 @@ void HarrisCroner(vector<LATCH::KeyPoint>& key, const basic_ImgData& grayImg)
 	using cv::UMat;
 
 	int edgeMaskDist = ORB_DSET_R;
-	int HarrisNum = 256;
-	int HarrisDist = std::min(grayImg.width, grayImg.height) / 20;
+	int HarrisNum = 20000;
+	int HarrisDist = 3;
+	/*HarrisDist = std::min(grayImg.width, grayImg.height) / 20;
 	HarrisDist = std::max(HarrisDist, 3);
-	HarrisDist = std::min(HarrisDist, 50);
+	HarrisDist = std::min(HarrisDist, 3);*/
 
 	// Herris 角點啟用 GPU 運算
 	vector<cv::Point2f> corners;
@@ -224,7 +227,9 @@ void HarrisCroner(vector<LATCH::KeyPoint>& key, const basic_ImgData& grayImg)
 			edgeMask.at<uchar>(idx) = 255;
 		}
 	}
+	int de=3;
 	goodFeaturesToTrack(ucvImg, corners, HarrisNum, 0.01, HarrisDist, edgeMask, 3, true);
+	goodFeaturesToTrack(ucvImg, corners, corners.size()>>de, 0.01, (HarrisDist<<de)+.5, edgeMask, 3, true);
 
 	// 輸出到 keyPt
 	key.clear();
@@ -326,7 +331,7 @@ int descDistance(const vector<uint64_t>& desc1, const vector<uint64_t>& desc2, i
 // ORB 描述
 void ORB_dsec(const ImgData& grayImg, vector<LATCH::KeyPoint>& key, vector<uint64_t>& desc) {
 	Timer t1;
-	t1.priSta = 0;
+	t1.priSta = 1;
 	
 	// KeyPoint
 	t1.start();
@@ -351,8 +356,8 @@ void ORB_match(vector<LATCH::KeyPoint>& key1, vector<uint64_t>& desc1,
 	vector<LATCH::KeyPoint>& key2, vector<uint64_t>& desc2, vector<ORB::DMatch>& dmatch)
 {
 	dmatch.resize(key1.size());				// 由key1去找key2
-	const float matchDistance = 128;		// 少於多少距離才選定
-	const float noMatchDistance = 192;		// 大於多少距離就不連
+	const float matchDistance = 96;			// 少於多少距離才選定
+	const float noMatchDistance = 128;		// 大於多少距離就不連
 
 	int matchNum = 0;
 	for (int j = 0; j < key1.size(); j++) {
@@ -474,22 +479,24 @@ double estimateFocal(const vector<double> &HomogMat, size_t img1Size, size_t img
 	} 
 
 	else {
-		throw out_of_range("123");
+		//throw out_of_range("123");
 		double focals_sum = 0;
 		focals_sum += img1Size + img2Size;
 		median = focals_sum / num_images;
 	}
-	//cout << "ft = " << ft << endl;
+	cout << "ft = " << median << endl;
 	return median;
 }
 // 估算焦距
-void estimateFocal(const vector<double> &HomogMat, double& focals) {
+double estimateFocal(const vector<double> &HomogMat) {
+	double focals = 0;
 	if (!HomogMat.empty()) {
 		double f0, f1;
 		bool f0ok, f1ok;
 		focalsFromHomography(HomogMat, f0, f1, f0ok, f1ok);
 		if (f0ok && f1ok) focals = std::sqrt(f0 * f1);
 	}
+	return focals;
 }
 
 
@@ -595,6 +602,7 @@ void estimateFocal(const vector<double> &HomogMat, double& focals) {
 }*/
 
 
+
 // =====================================================================================
 /// 公開函式
 // ORB 獲得投影矩陣
@@ -629,13 +637,20 @@ vector<double> ORB_Homography(const ImgData& img1, const ImgData& img2) {
 		keyPt_drawRANSACLine(img1, key1, img2, key2, dmatch);
 	}
 
+	// 估算焦距
+	double focals;
+	//focals = estimateFocal(HomogMat, img1.width, img2.width);
+	//cout << "focals = " << focals << endl;
+	focals = estimateFocal(HomogMat);
+	cout << "focals = " << focals << endl;
+
 
 	/********************* 驗證 *************************/
 	//keyPt_drawPoint(img1, key1); // 驗證::畫點
 	//keyPt_drawPoint(img2, key2); // 驗證::畫點
 	//keyPt_drawAngle(img1, key1); // 驗證::畫箭頭
 	//keyPt_drawAngle(img2, key2); // 驗證::畫箭頭
-	//keyPt_drawMatchLine(img1, key1, img2, key2, dmatch); 
+	keyPt_drawMatchLine(img1, key1, img2, key2, dmatch); 
 	/***************************************************/
 	
 	return HomogMat;
@@ -684,7 +699,7 @@ void cvInitializeOpenCL() {
 	
 	using namespace cv;
 
-	Mat cvImg(1, 1, CV_8U);
+	Mat cvImg(3, 3, CV_8U);
 	UMat ugray = cvImg.getUMat(ACCESS_RW);
 
 	vector<Point2f> corners;
