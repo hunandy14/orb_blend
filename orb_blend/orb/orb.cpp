@@ -15,24 +15,6 @@ using namespace std;
 
 #define ORB_DSET_R 15
 
-// =====================================================================================
-/// 資料結構
-
-namespace ORB {
-
-struct Point {
-	int x;
-	int y;
-};
-
-struct DMatch{
-	int queryIdx;
-	int trainIdx;
-	float distance;
-};
-
-}; // namespace ORB
-
 
 
 // =====================================================================================
@@ -178,7 +160,6 @@ void keyPt_drawRANSACLine(const ImgData& img1, vector<LATCH::KeyPoint>& key1,
 	}
 	// 畫線
 	int RANNum = 0;
-	vector<cv::DMatch> RANmatch;
 	for (size_t i = 0; i < RANSAC_mask.size(); i++) {
 		if (RANSAC_mask[i] != 0) { // 正確的
 			int x1 = fp1[i].x;
@@ -331,7 +312,7 @@ int descDistance(const vector<uint64_t>& desc1, const vector<uint64_t>& desc2, i
 // ORB 描述
 void ORB_dsec(const ImgData& grayImg, vector<LATCH::KeyPoint>& key, vector<uint64_t>& desc) {
 	Timer t1;
-	t1.priSta = 1;
+	t1.priSta = 0;
 	
 	// KeyPoint
 	t1.start();
@@ -349,7 +330,6 @@ void ORB_dsec(const ImgData& grayImg, vector<LATCH::KeyPoint>& key, vector<uint6
 	desc.resize(8 * key.size());
 	LATCH::LATCH<1>(grayImg.raw_img.data(), grayImg.width, grayImg.height, static_cast<int>(grayImg.width), key, desc.data());
 	t1.print("    LATCH");
-	cout << endl;
 }
 // ORB 匹配
 void ORB_match(vector<LATCH::KeyPoint>& key1, vector<uint64_t>& desc1,
@@ -409,7 +389,25 @@ vector<double> findHomography(
 		}
 	}
 	// 隨機抽樣
-	cv::Mat Hog = cv::findHomography(fp2, fp1, cv::RANSAC);
+	vector<uint8_t> RANSAC_mask;
+	cv::Mat Hog = cv::findHomography(fp2, fp1, cv::RANSAC, 3, RANSAC_mask, 2000, 0.995);
+
+	// 重置關鍵座標
+	long long int x=0, y=0;
+	int count=0;
+	vector<LATCH::KeyPoint> rankey1, rankey2;
+	for (int i = 0; i < RANSAC_mask.size(); i++) {
+		if (RANSAC_mask[i] != 0) { // 正確的
+			int x1 = fp1[i].x;
+			int y1 = fp1[i].y;
+			int x2 = fp2[i].x;
+			int y2 = fp2[i].y;
+			rankey1.emplace_back(LATCH::KeyPoint(x1, y1, 1, -1));
+			rankey2.emplace_back(LATCH::KeyPoint(x2, y2, 1, -1));
+		}
+	}
+	key1 = std::move(rankey1);
+	key2 = std::move(rankey2);
 
 	// 輸出到 hog
 	HomogMat.resize(Hog.cols*Hog.rows);
@@ -424,6 +422,7 @@ vector<double> findHomography(
 
 // =====================================================================================
 /// 焦距與偏差估算
+
 // 輸入 仿射矩陣 獲得焦距
 static void focalsFromHomography(const vector<double> &HomogMat, double &f0, double &f1, bool &f0_ok, bool &f1_ok)
 {
@@ -498,59 +497,59 @@ double estimateFocal(const vector<double> &HomogMat) {
 	}
 	return focals;
 }
-
-
-
 // 對齊取得第二張圖偏移量
-/*void getWarpOffset(const basic_ImgData &imgA, const basic_ImgData &imgB,
-	Feature const* const* good_match, int gm_num,
-	int &dx, int &dy, float FL)
+auto getWarpOffset(
+	const basic_ImgData &img1, vector<LATCH::KeyPoint> key1,
+	const basic_ImgData &img2, vector<LATCH::KeyPoint> key2, 
+	float FL)
 {
+	const int ptSize = key1.size();
 	// 中間值.
-	const float&& mid_x1 = (float)imgA.width / 2.f;
-	const float&& mid_x2 = (float)imgB.width / 2.f;
-	const float&& mid_y1 = (float)imgA.height / 2.f;
-	const float&& mid_y2 = (float)imgB.height / 2.f;
+	const float&& mid_x1 = (float)img1.width / 2.f;
+	const float&& mid_x2 = (float)img2.width / 2.f;
+	const float&& mid_y1 = (float)img1.height / 2.f;
+	const float&& mid_y2 = (float)img2.height / 2.f;
 	// 先算平方.
 	const float& fL1 = FL;
 	const float& fL2 = FL;
 	const float&& fL1_pow = pow(fL1, 2);
 	const float&& fL2_pow = pow(fL2, 2);
 
-
 	int cal_dx(0), cal_dy(0);
-	for (int i = 0; i < gm_num-1; i++) {
-		Feature const* const& curr_m = good_match[i];
-		const float imgX1 = curr_m->x;
-		const float imgY1 = curr_m->y;
-		const float imgX2 = curr_m->fwd_match->x;
-		const float imgY2 = curr_m->fwd_match->y;
+	for (int i = 0; i < ptSize-1; i++) {
+		const LATCH::KeyPoint& pt1 = key1[i];
+		const LATCH::KeyPoint& pt2 = key2[i];
+		const float imgX1 = pt1.x;
+		const float imgY1 = pt1.y;
+		const float imgX2 = pt2.x;
+		const float imgY2 = pt2.y;
+
 		// 圖1
-		float theta1 = fastAtanf_rad((imgX2 - mid_x1) / fL1);
-		float h1 = imgY2 - mid_y1;
-		h1 /= sqrt(pow((imgX2 - mid_x1), 2) + fL1_pow);
+		float theta1 = fastAtanf_rad((imgX1 - mid_x1) / fL1);
+		float h1 = imgY1 - mid_y1;
+		h1 /= sqrt(pow((imgX1 - mid_x1), 2) + fL1_pow);
 		int x1 = (int)(fL1*theta1 + mid_x1+.5);
 		int y1 = (int)(fL1*h1 + mid_y1+.5);
 		// 圖2
-		float theta2 = fastAtanf_rad((imgX1 - mid_x2) / fL2);
-		float h2 = imgY1 - mid_y2;
-		h2 /= sqrt(pow((imgX1 - mid_x2), 2) + fL2_pow);
-		int x2 = (int)(fL2*theta2 + mid_x2 + imgA.width +.5);
+		float theta2 = fastAtanf_rad((imgX2 - mid_x2) / fL2);
+		float h2 = imgY2 - mid_y2;
+		h2 /= sqrt(pow((imgX2 - mid_x2), 2) + fL2_pow);
+		int x2 = (int)(fL2*theta2 + mid_x2 + img1.width +.5);
 		int y2 = (int)(fL2*h2 + mid_y2 +.5);
 		// 累加座標.
 		int distX = x2 - x1;
-		int distY = imgA.height - y1 + y2;
+		int distY = img1.height - y1 + y2;
 		cal_dx += distX;
 		cal_dy += distY;
 	}
 
 	// 平均座標.
-	int avg_dx = (float)cal_dx / (float)(gm_num-1);
-	int avg_dy = (float)cal_dy / (float)(gm_num-1);
+	int avg_dx = (float)cal_dx / (float)(ptSize-1);
+	int avg_dy = (float)cal_dy / (float)(ptSize-1);
 
 	// 修正座標(猜測是4捨5入哪裡怎樣沒寫好才變成這樣).
 	if(avg_dx % 2 == 0){
-		if( imgA.width-avg_dx + 1 <= imgA.width && imgA.width- avg_dx + 1 <= imgB.width){
+		if( img1.width-avg_dx + 1 <= img1.width && img1.width- avg_dx + 1 <= img2.width){
 			//avg_dx += 1;
 		} else{
 			//avg_dx -= 1;
@@ -563,8 +562,8 @@ double estimateFocal(const vector<double> &HomogMat) {
 	static int num=-1;
 	++num;
 	if(avg_dy % 2 == 0){
-		if(imgA.height-avg_dy + 1 <= imgA.height && imgA.height-avg_dy + 1 <= imgB.height
-			and abs((int)imgA.height-avg_dy)>1){
+		if(img1.height-avg_dy + 1 <= img1.height && img1.height-avg_dy + 1 <= img2.height
+			and abs((int)img1.height-avg_dy)>1){
 			avg_dy += 1;
 			//cout << abs(avg_dy) <<"   ############# this Y is up" << num << endl;
 
@@ -582,31 +581,32 @@ double estimateFocal(const vector<double> &HomogMat) {
 	cout << endl;
 	// 假如 y 的偏移量大於圖片高
 	int xM, yM;
-	if(avg_dy > imgA.height) {
-		int dyy = -((int)imgA.height - abs((int)imgA.height - avg_dy));
+	if(avg_dy > img1.height) {
+		int dyy = -((int)img1.height - abs((int)img1.height - avg_dy));
 		int xMove = avg_dx;
 		int yMove = dyy;
-		xM = imgA.width - xMove;
-		yM = -(int)imgA.height - yMove;
+		xM = img1.width - xMove;
+		yM = -(int)img1.height - yMove;
 	} else { // 通常情況
 		int xMove = avg_dx;
 		int yMove = avg_dy;
 
-		xM = imgA.width - xMove;
-		yM = imgA.height - yMove;
+		xM = img1.width - xMove;
+		yM = img1.height - yMove;
 	}
 
 	// 輸出座標
-	dx=xM;
-	dy=yM;
-}*/
+	ORB::Point offsetPt = {xM, yM};
+	return offsetPt;
+}
 
 
 
 // =====================================================================================
 /// 公開函式
+
 // ORB 獲得投影矩陣
-vector<double> ORB_Homography(const ImgData& img1, const ImgData& img2) {
+ORB::warpData ORB_Homography(const ImgData& img1, const ImgData& img2) {
 	Timer t1, t0;
 	t1.priSta = 0;
 	// 轉灰階
@@ -629,31 +629,36 @@ vector<double> ORB_Homography(const ImgData& img1, const ImgData& img2) {
 	t1.print("  ORB_match");
 	cout << endl;
 
-	// 投影矩陣
-	vector<double> HomogMat;
-	if (dmatch.size() > 3) {
-		HomogMat = findHomography(key1, key2, dmatch);
-		t0.print("findHomography");
-		keyPt_drawRANSACLine(img1, key1, img2, key2, dmatch);
-	}
-
-	// 估算焦距
-	double focals;
-	//focals = estimateFocal(HomogMat, img1.width, img2.width);
-	//cout << "focals = " << focals << endl;
-	focals = estimateFocal(HomogMat);
-	cout << "focals = " << focals << endl;
-
 
 	/********************* 驗證 *************************/
 	//keyPt_drawPoint(img1, key1); // 驗證::畫點
 	//keyPt_drawPoint(img2, key2); // 驗證::畫點
 	//keyPt_drawAngle(img1, key1); // 驗證::畫箭頭
 	//keyPt_drawAngle(img2, key2); // 驗證::畫箭頭
-	keyPt_drawMatchLine(img1, key1, img2, key2, dmatch); 
+	//keyPt_drawMatchLine(img1, key1, img2, key2, dmatch); 
+	//keyPt_drawRANSACLine(img1, key1, img2, key2, dmatch);
 	/***************************************************/
+
 	
-	return HomogMat;
+	// 投影矩陣
+	vector<double> HomogMat;
+	if (dmatch.size() > 3) {
+		HomogMat = findHomography(key1, key2, dmatch);// 這裡會改變 key1, key2
+	}
+
+
+	// 估算焦距
+	double focals;
+	focals = estimateFocal(HomogMat);
+	cout << "focals = " << focals << endl;
+	// 估算偏移
+	ORB::Point offsetPt = getWarpOffset(img1, key1, img2, key2, focals);
+	cout << "ofset = " << offsetPt.x << ", " << offsetPt.y << endl;
+
+
+	ORB::warpData warpdata{HomogMat, offsetPt, focals};
+	t0.print("ORB::all run time");
+	return warpdata;
 }
 
 // 測試函式

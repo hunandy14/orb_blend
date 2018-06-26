@@ -4,6 +4,8 @@ using namespace std;
 
 #include "orb/orb.hpp"
 
+
+
 //====================================================================================
 int main(int argc, char const *argv[]) {
 	cvInitializeOpenCL();
@@ -16,11 +18,11 @@ int main(int argc, char const *argv[]) {
 	const ImgData img1(name1), img2(name2);
 	/*===================================================*/
 
-	auto Hog = ORB_Homography(img1, img2);
+	// 獲取投影矩陣 與 圓柱投影資訊
+	ORB::warpData w = ORB_Homography(img1, img2);
 
 
 
-	//ORB_test(img1, img2);
 
 	return 0;
 }
