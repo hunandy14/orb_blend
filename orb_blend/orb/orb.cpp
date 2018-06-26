@@ -342,7 +342,7 @@ void ORB_dsec(const ImgData& grayImg, vector<LATCH::KeyPoint>& key, vector<uint6
 	// desc
 	t1.start();
 	desc.resize(8 * key.size());
-	LATCH::LATCH<0>(grayImg.raw_img.data(), grayImg.width, grayImg.height, static_cast<int>(grayImg.width), key, desc.data());
+	LATCH::LATCH<1>(grayImg.raw_img.data(), grayImg.width, grayImg.height, static_cast<int>(grayImg.width), key, desc.data());
 	t1.print("    LATCH");
 	cout << endl;
 }
