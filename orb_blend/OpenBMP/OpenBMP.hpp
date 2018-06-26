@@ -8,12 +8,16 @@ Final: 2018/06/01
 #include <fstream>
 #include <vector>
 #include <string>
+#include <cmath>
+#define _USE_MATH_DEFINES
 
+#ifndef M_PI
+	#define M_PI 3.14159265358979323846
+#endif
 
 //----------------------------------------------------------------
 // 快速atan運算
 inline float fastAtan2f(float dy, float dx){
-	static const float M_PI     =  3.14159265358979323846f;
 	static const float atan2_p1 =  0.9997878412794807f*(float)(180/M_PI);
 	static const float atan2_p3 = -0.3258083974640975f*(float)(180/M_PI);
 	static const float atan2_p5 =  0.1555786518463281f*(float)(180/M_PI);
@@ -38,7 +42,6 @@ inline float fastAtan2f(float dy, float dx){
 	return a;
 }
 inline float fastAtan2f_rad(float dy, float dx){
-	static const float M_PI     =  3.14159265358979323846f;
 	static const float atan2_p1 =  0.9997878412794807f;
 	static const float atan2_p3 = -0.3258083974640975f;
 	static const float atan2_p5 =  0.1555786518463281f;
@@ -64,7 +67,6 @@ inline float fastAtan2f_rad(float dy, float dx){
 }
 // 快速 atan 算法
 inline float fastAtanf(float dy){
-	static const float M_PI     =  3.14159265358979323846f;
 	static const float atan2_p1 =  0.9997878412794807f*(float)(180/M_PI);
 	static const float atan2_p3 = -0.3258083974640975f*(float)(180/M_PI);
 	static const float atan2_p5 =  0.1555786518463281f*(float)(180/M_PI);
@@ -89,7 +91,6 @@ inline float fastAtanf(float dy){
 	return a;
 }
 inline float fastAtanf_rad(float dy){
-	static const float M_PI     =  3.14159265358979323846f;
 	static const float atan2_p1 =  0.9997878412794807f;
 	static const float atan2_p3 = -0.3258083974640975f;
 	static const float atan2_p5 =  0.1555786518463281f;
@@ -539,7 +540,7 @@ public: // 自訂方法
 		}
 		return img;
 	}
-	ImgData toSnip (uint32_t width, uint32_t height, uint32_t y=0, uint32_t x=0) const {
+		ImgData toSnip (uint32_t width, uint32_t height, uint32_t y=0, uint32_t x=0) const {
 		// 檢查超過邊界
 		if (width+x > this->width || height+y > this->height)
 			throw std::out_of_range("toSnip() out of range");
@@ -583,7 +584,7 @@ inline void Draw::drawLine_p(basic_ImgData& img, int y, int x, int y2, int x2, f
 	float dy = static_cast<float>(y2-y);
 	// 以Y軸為主
 	float sita=fastAtan2f(dy, dx);
-	if (sita>45 and sita<135 or sita>225 and sita<315) {
+	if ((sita>45 && sita<135) || (sita>225 && sita<315)) {
 		float slopeY = dx/dy; // 斜率
 		for (int i = 0; i < abs(dy); i++) {
 			int iFix = dy>0? i:-i;
@@ -616,7 +617,6 @@ inline void Draw::drawLine_p(basic_ImgData& img, int y, int x, int y2, int x2, f
 	}
 }
 inline void Draw::drawLine_s(basic_ImgData& img, int y, int x, float line_len, float sg, float val) {
-	static const float M_PI     = 3.14159265358979323846f;
 	// 防呆
 	if (line_len < 0) {
 		return;
@@ -632,7 +632,6 @@ inline void Draw::drawLine_s(basic_ImgData& img, int y, int x, float line_len, f
 	drawLine_p(img, y, x, y2, x2, val);
 }
 inline void Draw::draw_arrow(basic_ImgData& img, int y, int x, float line_len, float sg, float val) {
-	static const float M_PI     = 3.14159265358979323846f;
 	// 防呆
 	if (line_len < 0) {
 		return;
@@ -658,7 +657,7 @@ inline void Draw::drawLineRGB_p(basic_ImgData& img, int y, int x, int y2, int x2
 	float dy = (float)(y2-y);
 	// 以Y軸為主
 	float sita=fastAtan2f(dy, dx);
-	if (sita>45 and sita<135 or sita>225 and sita<315) {
+	if ((sita>45 && sita<135) || (sita>225 && sita<315)) {
 		float slopeY = dx/dy; // 斜率
 		for (int i = 0; i < abs(dy); i++) {
 			int iFix = dy>0? i:-i;
@@ -708,7 +707,6 @@ inline void Draw::drawLineRGB_p(basic_ImgData& img, int y, int x, int y2, int x2
 	drawLineRGB_p(img, y, x, y2, x2, rVal, gVal, bVal);
 }
 inline void Draw::drawLineRGB_s(basic_ImgData& img, int y, int x, float line_len, float sg) {
-	static const float M_PI     = 3.14159265358979323846f;
 	// 防呆
 	if (line_len < 0) {
 		return;
@@ -724,7 +722,6 @@ inline void Draw::drawLineRGB_s(basic_ImgData& img, int y, int x, float line_len
 	drawLineRGB_p(img, y, x, y2, x2, 242, 66, 54);
 }
 inline void Draw::draw_arrowRGB(basic_ImgData& img, int y, int x, float line_len, float sg) {
-	static const float M_PI     = 3.14159265358979323846f;
 	// 防呆
 	if (line_len < 0) {
 		return;
