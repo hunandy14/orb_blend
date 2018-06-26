@@ -13,10 +13,10 @@ Final: 2018/06/01
 //----------------------------------------------------------------
 // 快速atan運算
 inline float fastAtan2f(float dy, float dx){
-	static const float M_PI     = 3.14159265358979323846f;
-	static const float atan2_p1 = 0.9997878412794807f*(float)(180/M_PI);
+	static const float M_PI     =  3.14159265358979323846f;
+	static const float atan2_p1 =  0.9997878412794807f*(float)(180/M_PI);
 	static const float atan2_p3 = -0.3258083974640975f*(float)(180/M_PI);
-	static const float atan2_p5 = 0.1555786518463281f*(float)(180/M_PI);
+	static const float atan2_p5 =  0.1555786518463281f*(float)(180/M_PI);
 	static const float atan2_p7 = -0.04432655554792128f*(float)(180/M_PI);
 	static const float atan2_DBL_EPSILON = 2.2204460492503131e-016;
 
@@ -38,7 +38,7 @@ inline float fastAtan2f(float dy, float dx){
 	return a;
 }
 inline float fastAtan2f_rad(float dy, float dx){
-	static const float M_PI     = 3.14159265358979323846f;
+	static const float M_PI     =  3.14159265358979323846f;
 	static const float atan2_p1 =  0.9997878412794807f;
 	static const float atan2_p3 = -0.3258083974640975f;
 	static const float atan2_p5 =  0.1555786518463281f;
@@ -54,7 +54,7 @@ inline float fastAtan2f_rad(float dy, float dx){
 	} else {
 		c = ax/(ay + static_cast<float>(atan2_DBL_EPSILON));
 		c2 = c*c;
-		a = M_PI/0.5f - (((atan2_p7*c2 + atan2_p5)*c2 + atan2_p3)*c2 + atan2_p1)*c;
+		a = M_PI*.5f - (((atan2_p7*c2 + atan2_p5)*c2 + atan2_p3)*c2 + atan2_p1)*c;
 	}
 	if (dx < 0)
 		a = M_PI - a;
@@ -64,10 +64,10 @@ inline float fastAtan2f_rad(float dy, float dx){
 }
 // 快速 atan 算法
 inline float fastAtanf(float dy){
-	static const float M_PI     = 3.14159265358979323846f;
-	static const float atan2_p1 = 0.9997878412794807f*(float)(180/M_PI);
+	static const float M_PI     =  3.14159265358979323846f;
+	static const float atan2_p1 =  0.9997878412794807f*(float)(180/M_PI);
 	static const float atan2_p3 = -0.3258083974640975f*(float)(180/M_PI);
-	static const float atan2_p5 = 0.1555786518463281f*(float)(180/M_PI);
+	static const float atan2_p5 =  0.1555786518463281f*(float)(180/M_PI);
 	static const float atan2_p7 = -0.04432655554792128f*(float)(180/M_PI);
 	static const float atan2_DBL_EPSILON = 2.2204460492503131e-016;
 
@@ -89,14 +89,14 @@ inline float fastAtanf(float dy){
 	return a;
 }
 inline float fastAtanf_rad(float dy){
-	static const float M_PI     = 3.14159265358979323846f;
+	static const float M_PI     =  3.14159265358979323846f;
 	static const float atan2_p1 =  0.9997878412794807f;
 	static const float atan2_p3 = -0.3258083974640975f;
 	static const float atan2_p5 =  0.1555786518463281f;
 	static const float atan2_p7 = -0.04432655554792128f;
 	static const float atan2_DBL_EPSILON = 2.2204460492503131e-016;
 
-	float ax = 1.f, ay = std::abs(dy);
+	float ax = 1.0, ay = std::abs(dy);
 	float a, c, c2;
 	if (ax >= ay) {
 		c = ay/(ax + static_cast<float>(atan2_DBL_EPSILON));
@@ -105,7 +105,7 @@ inline float fastAtanf_rad(float dy){
 	} else {
 		c = ax/(ay + static_cast<float>(atan2_DBL_EPSILON));
 		c2 = c*c;
-		a = M_PI*0.5f - (((atan2_p7*c2 + atan2_p5)*c2 + atan2_p3)*c2 + atan2_p1)*c;
+		a = M_PI*.5f - (((atan2_p7*c2 + atan2_p5)*c2 + atan2_p3)*c2 + atan2_p1)*c;
 	}
 
 	if (dy < 0)
