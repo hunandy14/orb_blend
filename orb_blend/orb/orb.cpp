@@ -12,7 +12,6 @@ using namespace std;
 #include "OpenBMP.hpp"
 #include "LATCH.h"
 #include "orb.hpp"
-#include "FAST9.hpp"
 
 #define ORB_DSET_R 15
 #define HARRIS_total 20000
@@ -24,8 +23,8 @@ using namespace std;
 
 
 // =====================================================================================
-/// 輸出測試圖函式
-
+/*
+#include "FAST9.hpp"
 void FATS_drawPoint(ImgData out, const FAST9& pt, string name = "_FSATCorner") {
 	using uch = unsigned char;
 	out.convertRGB();
@@ -46,6 +45,54 @@ void FATS_drawPoint(ImgData out, const FAST9& pt, string name = "_FSATCorner") {
 	static int num = 0;
 	out.bmp(name + to_string(num++) + ".bmp");
 }
+void oFASTCroner(vector<LATCH::KeyPoint>& key, const basic_ImgData& grayImg)
+{
+	using cv::Mat;
+	using cv::UMat;
+
+	int edgeMaskDist = ORB_DSET_R;
+	int HarrisNum = 256;
+	int minEdg = std::min(grayImg.width, grayImg.height);
+	int HarrisDist = minEdg / 20;
+	HarrisDist = std::max(HarrisDist, 3);
+	HarrisDist = std::min(HarrisDist, 50);
+
+	// Herris 角點啟用 GPU 運算
+	vector<cv::Point2f> corners;
+	Mat cvImg(grayImg.height, grayImg.width, CV_8U, (void*)grayImg.raw_img.data());
+	UMat ucvImg = cvImg.getUMat(cv::ACCESS_READ);
+
+	// FAST 遮罩
+	FAST9 pt(grayImg);
+
+	if (pt.pt!=nullptr) {
+		Mat FASTMask(Mat::zeros(cv::Size(grayImg.width, grayImg.height), CV_8U));
+		for (int i = 0; i < pt.num; i++) {
+			int x = pt.pt[i].x;
+			int y = pt.pt[i].y;
+			// 過濾邊緣位置
+			if (x >= (edgeMaskDist) && x <= (int)grayImg.width - (edgeMaskDist) &&
+				y >= (edgeMaskDist) && y <= (int)grayImg.height - (edgeMaskDist))
+			{
+				int idx = y * grayImg.width + x;
+				FASTMask.at<uchar>(idx) = 255;
+			}
+		}
+		goodFeaturesToTrack(ucvImg, corners, 445, 0.01, 3, FASTMask, 3, true);
+	}
+
+	// 輸出到 keyPt
+	key.clear();
+	for (auto&& kp : corners) {
+		key.emplace_back(kp.x, kp.y, 31.f, -1.f);
+	}
+}
+*/
+
+
+// =====================================================================================
+/// 輸出測試圖函式
+
 void keyPt_drawPoint(ImgData out, const vector<LATCH::KeyPoint>& corner, string name = "_drawKeyPt")
 {
 	using uch = unsigned char;
@@ -255,48 +302,6 @@ void HarrisCroner(vector<LATCH::KeyPoint>& key, const basic_ImgData& grayImg)
 	int de = HARRIS_de;
 	goodFeaturesToTrack(ucvImg, corners, HarrisNum, 0.01, HarrisDist, edgeMask, 3, true);
 	goodFeaturesToTrack(ucvImg, corners, corners.size()>>de, 0.01, (HarrisDist<<de)+.5, edgeMask, 3, true);
-
-	// 輸出到 keyPt
-	key.clear();
-	for (auto&& kp : corners) {
-		key.emplace_back(kp.x, kp.y, 31.f, -1.f);
-	}
-}
-void oFASTCroner(vector<LATCH::KeyPoint>& key, const basic_ImgData& grayImg)
-{
-	using cv::Mat;
-	using cv::UMat;
-
-	int edgeMaskDist = ORB_DSET_R;
-	int HarrisNum = 256;
-	int minEdg = std::min(grayImg.width, grayImg.height);
-	int HarrisDist = minEdg / 20;
-	HarrisDist = std::max(HarrisDist, 3);
-	HarrisDist = std::min(HarrisDist, 50);
-
-	// Herris 角點啟用 GPU 運算
-	vector<cv::Point2f> corners;
-	Mat cvImg(grayImg.height, grayImg.width, CV_8U, (void*)grayImg.raw_img.data());
-	UMat ucvImg = cvImg.getUMat(cv::ACCESS_READ);
-
-	// FAST 遮罩
-	FAST9 pt(grayImg);
-
-	if (pt.pt!=nullptr) {
-		Mat FASTMask(Mat::zeros(cv::Size(grayImg.width, grayImg.height), CV_8U));
-		for (int i = 0; i < pt.num; i++) {
-			int x = pt.pt[i].x;
-			int y = pt.pt[i].y;
-			// 過濾邊緣位置
-			if (x >= (edgeMaskDist) && x <= (int)grayImg.width - (edgeMaskDist) &&
-				y >= (edgeMaskDist) && y <= (int)grayImg.height - (edgeMaskDist))
-			{
-				int idx = y * grayImg.width + x;
-				FASTMask.at<uchar>(idx) = 255;
-			}
-		}
-		goodFeaturesToTrack(ucvImg, corners, 445, 0.01, 3, FASTMask, 3, true);
-	}
 
 	// 輸出到 keyPt
 	key.clear();
@@ -678,7 +683,7 @@ ORB::warpData ORB_Homography(const ImgData& img1, const ImgData& img2) {
 	
 	t0.print("ORB::all run time");
 	// RANSAC 連線圖
-	keyPt_drawMatchLine(img1, key1, img2, key2, "__RANSACmatchImg.bmp");
+	//keyPt_drawMatchLine(img1, key1, img2, key2, "__RANSACmatchImg.bmp");
 	return warpdata;
 }
 

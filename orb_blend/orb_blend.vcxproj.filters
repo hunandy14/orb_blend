@@ -12,9 +12,6 @@
     <Filter Include="orb">
       <UniqueIdentifier>{33e3ece5-65ea-4125-900c-8b1c6aa26a57}</UniqueIdentifier>
     </Filter>
-    <Filter Include="FAST9">
-      <UniqueIdentifier>{3e5f6ffe-3d30-4417-aad0-c9f7a0d73d3b}</UniqueIdentifier>
-    </Filter>
     <Filter Include="來源檔案">
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
@@ -30,9 +27,6 @@
     <ClCompile Include="orb\orb.cpp">
       <Filter>orb</Filter>
     </ClCompile>
-    <ClCompile Include="FAST9\FAST9.cpp">
-      <Filter>FAST9</Filter>
-    </ClCompile>
     <ClCompile Include="LapBlend\LapBlend.cpp">
       <Filter>LapBlend</Filter>
     </ClCompile>
@@ -43,9 +37,6 @@
     </ClInclude>
     <ClInclude Include="orb\orb.hpp">
       <Filter>orb</Filter>
-    </ClInclude>
-    <ClInclude Include="FAST9\FAST9.hpp">
-      <Filter>FAST9</Filter>
     </ClInclude>
     <ClInclude Include="orb\LATCH.h">
       <Filter>orb</Filter>

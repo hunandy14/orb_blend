@@ -149,13 +149,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="FAST9\FAST9.cpp" />
     <ClCompile Include="LapBlend\LapBlend.cpp" />
     <ClCompile Include="orb\orb.cpp" />
     <ClCompile Include="orb_blend_main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="FAST9\FAST9.hpp" />
     <ClInclude Include="LapBlend\LapBlend.hpp" />
     <ClInclude Include="OpenBMP\OpenBMP.hpp" />
     <ClInclude Include="orb\LATCH.h" />
