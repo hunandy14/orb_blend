@@ -160,7 +160,7 @@ static vector<double> getGaussianKernel(int n, double sigma)
 	return kernel;
 }
 // 高斯模糊
-void GaussianBlur(const basic_ImgData& src, basic_ImgData& dst, size_t mat_len, double p=0)
+void GaussianBlurX(const basic_ImgData& src, basic_ImgData& dst, size_t mat_len, double p=0)
 {
 	Timer t1;
 	size_t width  = src.width;
@@ -173,7 +173,7 @@ void GaussianBlur(const basic_ImgData& src, basic_ImgData& dst, size_t mat_len, 
 	dst.height = height;
 	dst.bits   = src.bits;
 	// 緩存
-	vector<double> img_gauX(width*height*3);
+	//vector<double> img_gauX(width*height*3);
 	// 高斯模糊 X 軸
 	const size_t r = gau_mat.size() / 2;
 #pragma omp parallel for
@@ -194,13 +194,13 @@ void GaussianBlur(const basic_ImgData& src, basic_ImgData& dst, size_t mat_len, 
 				sumG += (double)src.raw_img[(j*width + idx)*3 + 1] * gau_mat[k];
 				sumB += (double)src.raw_img[(j*width + idx)*3 + 2] * gau_mat[k];
 			}
-			img_gauX[(j*width + i)*3 + 0] = sumR;
-			img_gauX[(j*width + i)*3 + 1] = sumG;
-			img_gauX[(j*width + i)*3 + 2] = sumB;
+			dst.raw_img[(j*width + i)*3 + 0] = sumR;
+			dst.raw_img[(j*width + i)*3 + 1] = sumG;
+			dst.raw_img[(j*width + i)*3 + 2] = sumB;
 		}
 	}
 	// 高斯模糊 Y 軸
-#pragma omp parallel for
+/*#pragma omp parallel for
 	for (int j = 0; j < height; ++j) {
 		for (int i = 0; i < width; ++i) {
 			double sumR = 0;
@@ -223,7 +223,7 @@ void GaussianBlur(const basic_ImgData& src, basic_ImgData& dst, size_t mat_len, 
 			dst.raw_img[(j*width + i)*3 + 1] = sumG;
 			dst.raw_img[(j*width + i)*3 + 2] = sumB;
 		}
-	}
+	}*/
 }
 // 積分模糊
 void Lowpass(const basic_ImgData& src, basic_ImgData& dst) {
@@ -297,7 +297,7 @@ void pyraUp(const basic_ImgData &src, basic_ImgData &dst) {
 
 	basic_ImgData temp;
 	WarpScale(src, temp, 2.0);
-	GaussianBlur(temp, dst, 3);
+	GaussianBlurX(temp, dst, 3);
 }
 void pyraDown(const basic_ImgData &src, basic_ImgData &dst) {
 	//Timer t1;
@@ -313,7 +313,7 @@ void pyraDown(const basic_ImgData &src, basic_ImgData &dst) {
 
 	basic_ImgData temp;
 	WarpScale(src, temp, 0.5);
-	GaussianBlur(temp, dst, 3);
+	GaussianBlurX(temp, dst, 3);
 }
 void imgSub(basic_ImgData &src, const basic_ImgData &dst) {
 	int i, j;
@@ -844,6 +844,7 @@ void LapBlend_Tester() {
 	ImgData_read(src2, name2);
 	// 混合圖片
 	Timer t1;
+	t1.start();
 	LapBlender(dst, src1, src2, ft, Ax, Ay);
 	t1.print(" LapBlender");
 	// 輸出圖片
