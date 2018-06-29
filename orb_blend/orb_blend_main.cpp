@@ -13,8 +13,17 @@ int main(int argc, char const *argv[]) {
 	string name1, name2;
 	/*======================´ú¸ê==========================*/
 	//name1 = "kanna.bmp", name2 = "kanna90.bmp"; // 90«×´ú¸Õ
-	name1 = "ball_01.bmp", name2 = "ball_02.bmp";
+	//name1 = "ball_01.bmp", name2 = "ball_02.bmp";
 	//name1 = "sc02.bmp", name2 = "sc03.bmp";
+	//name1 = "data/DSC_2936.bmp", name2 = "data/DSC_2937.bmp";
+	//name1 = "data/DSC_2938.bmp", name2 = "data/DSC_2939.bmp";
+	//name1 = "data/DSC_2940.bmp", name2 = "data/DSC_2941.bmp";
+	//name1 = "data/DSC_2942.bmp", name2 = "data/DSC_2943.bmp";
+	//name1 = "data/DSC_2944.bmp", name2 = "data/DSC_2945.bmp";
+	name1 = "data/DSC_2946.bmp", name2 = "data/DSC_2947.bmp";
+	name1 = "data/DSC_2952.bmp", name2 = "data/DSC_2953.bmp";
+	name1 = "data/DSC_2956.bmp", name2 = "data/DSC_2957.bmp";
+	name1 = "data/DSC_2958.bmp", name2 = "data/DSC_2959.bmp";
 	ImgData img1(name1), img2(name2);
 	/*===================================================*/
 	Timer t1, t0;

@@ -823,6 +823,9 @@ void LapBlender(basic_ImgData &dst,
 	basic_ImgData warp1, warp2;
 	WarpCylindrical(warp1, src1, ft, 0, 0, 0);
 	WarpCylindrical(warp2, src2, ft, 0, 0, 0);
+
+	//ImgData_write(warp1, "warp1.bmp");
+	//ImgData_write(warp2, "warp2.bmp");
 	WarpCyliMuitBlend(dst, warp1, warp2, mx, my);
 }
 

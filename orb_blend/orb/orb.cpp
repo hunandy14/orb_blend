@@ -13,12 +13,17 @@ using namespace std;
 #include "LATCH.h"
 #include "orb.hpp"
 
-#define ORB_DSET_R 15
-#define HARRIS_total 20000
-#define HARRIS_DIST 3
-#define HARRIS_de 3
-#define ORB_DIST 96
-#define ORB_DISTMAX 128
+#define ORB_DSET_R 15 // 描述半徑
+#define HARRIS_total 20000  // HARRIS 保留特徵點
+
+#define HARRIS_DIST 3		// HSRRIS 刪除距離
+#define HARRIS_de 2			// 2過濾幾次倍數(2的次方)
+#define ORB_DIST 96		// 匹配距離 (64~128) 差不多是能用的
+#define ORB_DISTMAX 128		// 匹配距離 上限
+
+// 籃球縫圓 [3, 1] 500ms
+// 籃球平   [7, 2] 150ms
+// 籃球過圓 [7, 3] 111ms
 
 
 
@@ -300,8 +305,14 @@ void HarrisCroner(vector<LATCH::KeyPoint>& key, const basic_ImgData& grayImg)
 		}
 	}
 	int de = HARRIS_de;
+	float dis;
+	if ((HarrisDist << de) %2 != 0) {
+		dis = (HarrisDist << de);
+	} else {
+		dis = (HarrisDist << de) + .5;
+	}
 	goodFeaturesToTrack(ucvImg, corners, HarrisNum, 0.01, HarrisDist, edgeMask, 3, true);
-	goodFeaturesToTrack(ucvImg, corners, corners.size()>>de, 0.01, (HarrisDist<<de)+.5, edgeMask, 3, true);
+	goodFeaturesToTrack(ucvImg, corners, corners.size()>>HARRIS_de, 0.01, dis, edgeMask, 3, true);
 
 	// 輸出到 keyPt
 	key.clear();
@@ -361,7 +372,7 @@ int descDistance(const vector<uint64_t>& desc1, const vector<uint64_t>& desc2, i
 // ORB 描述
 void ORB_dsec(const ImgData& grayImg, vector<LATCH::KeyPoint>& key, vector<uint64_t>& desc) {
 	Timer t1;
-	t1.priSta = 0;
+	t1.priSta = 1;
 	
 	// KeyPoint
 	t1.start();
@@ -566,7 +577,6 @@ auto getWarpOffset(
 
 	float cal_dx=0, cal_dy=0;
 
-//#pragma omp parallel for
 	for (int i = 0; i < ptSize-1; i++) {
 		const LATCH::KeyPoint& pt1 = key1[i];
 		const LATCH::KeyPoint& pt2 = key2[i];
@@ -666,16 +676,12 @@ ORB::warpData ORB_Homography(const ImgData& img1, const ImgData& img2) {
 	}
 
 
-	// 估算焦距
+	// 估算焦距 0ms
 	double focals;
-	t1.start();
 	focals = estimateFocal(HomogMat);
-	t1.print("  estimateFocal");
 	cout << "focals = " << focals << endl;
-	// 估算偏移
-	t1.start();
+	// 估算偏移 0ms
 	ORB::Point offsetPt = getWarpOffset(img1, key1, img2, key2, focals);
-	t1.print("  getWarpOffset");
 	cout << "ofset = " << offsetPt.x << ", " << offsetPt.y << endl;
 
 
@@ -683,7 +689,7 @@ ORB::warpData ORB_Homography(const ImgData& img1, const ImgData& img2) {
 	
 	t0.print("ORB::all run time");
 	// RANSAC 連線圖
-	//keyPt_drawMatchLine(img1, key1, img2, key2, "__RANSACmatchImg.bmp");
+	keyPt_drawMatchLine(img1, key1, img2, key2, "__RANSACmatchImg.bmp");
 	return warpdata;
 }
 
@@ -731,7 +737,7 @@ void cvInitializeOpenCL() {
 	using namespace cv;
 
 	Mat cvImg(3, 3, CV_8U);
-	UMat ugray = cvImg.getUMat(ACCESS_RW);
+	UMat ugray = cvImg.getUMat(cv::ACCESS_READ);
 
 	vector<Point2f> corners;
 	goodFeaturesToTrack(ugray, corners, 2000, 0.01, 3);
